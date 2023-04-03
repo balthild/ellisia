@@ -1,0 +1,173 @@
+:root {
+    --font-size: 20px;
+    --font-family: 'HarmonyOS Sans', sans-serif;
+    --line-height: 1.7;
+    --paragraph-spacing: 10px;
+    --paragraph-indent: 2em;
+    --page-padding: 2rem;
+    --text-width: 30rem;
+    --text-align: justify;
+}
+
+::selection {
+    /* background: rgb(69 105 144 / 30%); */
+    background: #c8d6e4;
+}
+
+html {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body {
+    margin: 0 auto !important;
+    padding: var(--page-padding) !important;
+    max-width: var(--text-width) !important;
+}
+
+html,
+body {
+    font-size: var(--font-size);
+    font-family: var(--font-family);
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-family) !important;
+}
+
+p {
+    font-size: var(--font-size) !important;
+    text-align: var(--text-align) !important;
+    line-height: var(--line-height) !important;
+    margin-top: var(--paragraph-spacing) !important;
+    margin-bottom: var(--paragraph-spacing) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+p:not(li p) {
+    text-indent: var(--paragraph-indent) !important;
+}
+
+img {
+    max-width: calc(100% - 2 * var(--paragraph-indent));
+    height: auto;
+}
+
+/* Reader UI */
+
+.ellisia-ui {
+    font-size: 16px !important;
+    font-family: 'HarmonyOS Sans', sans-serif !important;
+    line-height: 1.5 !important;
+    text-indent: 0 !important;
+    user-select: none;
+}
+
+.ellisia-hidden {
+    display: none !important;
+}
+
+@keyframes spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+.ellisia-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f6f6f6;
+}
+body.ellisia-loaded .ellisia-loading-overlay {
+    display: none;
+}
+.ellisia-loading {
+    width: 48px;
+    height: 48px;
+    display: inline-block;
+    position: relative;
+}
+.ellisia-loading::after,
+.ellisia-loading::before {
+    content: '';
+    width: 48px;
+    height: 48px;
+    border: 2px solid #aaaaaa;
+    position: absolute;
+    left: 0;
+    top: 0;
+    box-sizing: border-box;
+    animation: ellisia-loading 3s ease-in-out infinite;
+}
+.ellisia-loading::after {
+    border-color: #456990;
+    animation-direction: reverse;
+}
+@keyframes ellisia-loading {
+    0% {
+        transform: rotate(0);
+    }
+    25% {
+        transform: rotate(90deg);
+    }
+    50% {
+        transform: rotate(180deg);
+    }
+    75% {
+        transform: rotate(270deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.ellisia-prev,
+.ellisia-next {
+    font-weight: 500;
+    font-size: 1.25em;
+    color: #5079a5;
+    cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+.ellisia-prev:hover,
+.ellisia-next:hover {
+    color: #3c5b7c;
+}
+
+.ellisia-paginator-top {
+    margin: 0 0 3rem;
+    display: flex;
+    justify-content: space-between;
+}
+.ellisia-paginator-bottom {
+    margin: 3rem 0 0;
+    display: flex;
+    gap: 2rem;
+}
+.ellisia-paginator-bottom a {
+    flex: 1;
+    display: block;
+    background: rgb(0 0 0 / 6%);
+    border-radius: 3px;
+    padding: 0.8rem;
+    text-align: center;
+}
+.ellisia-paginator-bottom a:hover {
+    background: rgb(0 0 0 / 10%);
+}

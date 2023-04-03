@@ -1,0 +1,43 @@
+.toolbar {
+    width: 100vw;
+    padding: 0.4rem 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    box-sizing: border-box;
+    background: #ffffff;
+    border-bottom: 1px solid #cccccc;
+    user-select: none;
+
+    .btn {
+        padding: 0;
+        border: none;
+        outline: none;
+        border-radius: 3px;
+
+        color: #555555;
+        background: transparent;
+        transition: background-color 0.2s ease, color 0.2s ease;
+        cursor: pointer;
+
+        font-size: 1.25rem;
+        overflow: hidden;
+        width: 1.8rem;
+        height: 1.8rem;
+        line-height: 1.8rem;
+        text-align: center;
+
+        &:hover {
+            background: #e8e8e8;
+        }
+
+        &:active {
+            background: #d0d0d0;
+        }
+    }
+}
+
+.main {
+    display: flex;
+    align-items: stretch;
+}
