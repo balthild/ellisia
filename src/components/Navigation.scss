@@ -7,19 +7,15 @@
     background: #ffffff;
     border-right: 1px solid #cccccc;
     padding: 0.2rem 0;
-    overflow-y: overlay;
     user-select: none;
 
-    &::-webkit-scrollbar {
-        width: 12px;
-        background: transparent;
-    }
-
-    &.scrolling::-webkit-scrollbar-thumb {
-        background: rgb(0 0 0 / 30%);
-        border: 4px solid transparent;
-        border-radius: 12px;
-        background-clip: padding-box;
+    .os-scrollbar {
+        --os-size: 11px;
+        --os-padding-axis: 3px;
+        --os-padding-perpendicular: 3px;
+        --os-handle-bg: rgba(0, 0, 0, 0.4);
+        --os-handle-bg-hover: rgba(0, 0, 0, 0.5);
+        --os-handle-bg-active: rgba(0, 0, 0, 0.6);
     }
 }
 
@@ -32,6 +28,10 @@
 
     &:hover {
         background: #e8e8e8;
+    }
+
+    &:active {
+        background: #d0d0d0;
     }
 
     &.current {

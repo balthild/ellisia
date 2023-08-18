@@ -6,9 +6,10 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::get_config_dir;
+use crate::epub::EpubFile;
+use crate::utils::get_config_dir_path;
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 /// Most of the time we do both read and write (e.g. updating reading state),
 /// so we don't use a RwLock as it's not a read-heavy load.
 pub struct Library {
@@ -16,19 +17,13 @@ pub struct Library {
 }
 
 impl Library {
-    fn init_path() -> Result<PathBuf> {
-        let dir = get_config_dir().context("Failed to get app config dir")?;
-        if dir.is_file() {
-            std::fs::remove_file(&dir).context("Failed to init app config dir")?;
-        }
-        if !dir.exists() {
-            std::fs::create_dir_all(&dir).context("Failed to init app config dir")?;
-        }
+    fn get_path() -> Result<PathBuf> {
+        let dir = get_config_dir_path()?;
         Ok(dir.join("library.json"))
     }
 
     pub fn load() -> Result<Self> {
-        let path = Self::init_path()?;
+        let path = Self::get_path()?;
         let file = File::options()
             .read(true)
             .write(true)
@@ -41,6 +36,13 @@ impl Library {
         Ok(library)
     }
 
+    pub fn persist(&mut self) -> Result<()> {
+        let path = Self::get_path()?;
+        let file = File::create(path).context("Failed to open library.json")?;
+        serde_json::to_writer_pretty(file, self).context("Failed to write library.json")?;
+        Ok(())
+    }
+
     pub fn books(&self) -> &HashMap<String, Book> {
         &self.books
     }
@@ -48,20 +50,38 @@ impl Library {
     pub fn books_mut(&mut self) -> &mut HashMap<String, Book> {
         &mut self.books
     }
-
-    pub fn persist(&mut self) -> Result<()> {
-        let path = Self::init_path()?;
-        let file = File::create(path).context("Failed to open library.json")?;
-        serde_json::to_writer_pretty(file, self).context("Failed to write library.json")?;
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Book {
     pub path: String,
-    pub hash: String,
     pub content_path: String,
     pub content_progress: f64,
     pub last_read_at: u64,
+    #[serde(default)]
+    pub metadata: BookMetadata,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct BookMetadata {
+    pub unique_id: Option<String>,
+    pub title: Option<String>,
+    pub author: Option<String>,
+}
+
+impl BookMetadata {
+    pub fn new(epub: &EpubFile) -> Self {
+        Self {
+            unique_id: epub.rootfile().get_unique_id(),
+            title: epub
+                .rootfile()
+                .package
+                .metadata
+                .title
+                .first()
+                .cloned()
+                .or_else(|| epub.path().file_name().map(str::to_owned)),
+            author: epub.rootfile().package.metadata.creator.first().cloned(),
+        }
+    }
 }

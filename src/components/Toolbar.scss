@@ -9,6 +9,13 @@
     border-bottom: 1px solid #cccccc;
     user-select: none;
 
+    .sep {
+        width: 1px;
+        height: 1.4rem;
+        margin: 0 0.4rem;
+        background: #bbbbbb;
+    }
+
     .btn {
         padding: 0;
         border: none;

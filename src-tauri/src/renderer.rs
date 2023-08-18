@@ -1,8 +1,10 @@
+
 use std::io::Cursor;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
 use anyhow::{anyhow, Context, Result};
+use image::{DynamicImage, ImageOutputFormat};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use rand::distributions::{Alphanumeric, DistString};
@@ -10,8 +12,11 @@ use rayon_core::ThreadPoolBuilder;
 use regex::Regex;
 use tauri::{AppHandle, Manager};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
+use typed_path::Utf8NativePathBuf;
 
-use crate::app::AppState;
+use crate::epub::EpubFile;
+use crate::state::AppState;
+use crate::utils::get_config_dir_path;
 
 type BytesResponse = Response<Cursor<Vec<u8>>>;
 
@@ -47,6 +52,7 @@ fn handle_request(app: AppHandle, request: Request) -> Result<()> {
     let response = match uri.path() {
         "/" => handle_root_request(),
         path if path.starts_with("/book/") => handle_book_request(app, path),
+        path if path.starts_with("/cover/") => handle_thumbnail_request(app, path),
         path if path.starts_with("/static/") => handle_asset_request(app, &request, path),
         path => Ok(make_response(404, format!("Not Found: {path}"))),
     }?;
@@ -55,8 +61,8 @@ fn handle_request(app: AppHandle, request: Request) -> Result<()> {
 }
 
 fn handle_root_request() -> Result<BytesResponse> {
-    let blank = format!(include_str!("./templates/blank.html"));
-    let response = make_xhtml_response(blank.to_string());
+    let blank = include_str!("./templates/blank.html").to_string();
+    let response = make_xhtml_response(blank);
     Ok(response)
 }
 
@@ -92,7 +98,62 @@ fn handle_book_request(app: AppHandle, path: &str) -> Result<BytesResponse> {
         }
     };
 
-    return Ok(response);
+    Ok(response)
+}
+
+fn handle_thumbnail_request(app: AppHandle, path: &str) -> Result<BytesResponse> {
+    static PARAMS: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new("^/cover/([A-Za-z0-9_-]+)\\.png$").unwrap());
+
+    let params = PARAMS
+        .captures(path)
+        .and_then(|captures| captures.get(1))
+        .map(|id| id.as_str());
+
+    let Some(id) = params else {
+        let response = make_response(404, format!("Not Found: {path}"));
+        return Ok(response);
+    };
+
+    let thumbnail_dir = get_config_dir_path()?.join("cover");
+    let thumbnail_path = thumbnail_dir.join(format!("{id}.png"));
+
+    if let Ok(data) = std::fs::read(&thumbnail_path) {
+        let content_type = Header::from_str("Content-Type: image/png").unwrap();
+        let response = make_response(200, data).with_header(content_type);
+        return Ok(response);
+    }
+
+    let state = app.state::<AppState>();
+    let library = state.library().lock();
+    let Some(book_path) = library.books().get(id).map(|book| book.path.clone()) else {
+        let response = make_response(404, format!("Book Not Found in library: {id}"));
+        return Ok(response);
+    };
+    drop(library);
+
+    let Ok(mut epub) = EpubFile::open(Utf8NativePathBuf::from(&book_path)) else {
+        let response = make_response(500, format!("Failed to open epub: {book_path}"));
+        return Ok(response);
+    };
+
+    let thumbnail = match make_cover_thumbnail(&mut epub) {
+        Ok(thumbnail) => thumbnail,
+        Err(e) => {
+            let response = make_response(500, format!("Failed to get book cover: {id}\n{e}"));
+            return Ok(response);
+        }
+    };
+
+    let _ = thumbnail.save(thumbnail_path);
+
+    let mut data: Vec<u8> = Vec::new();
+    thumbnail.write_to(&mut Cursor::new(&mut data), ImageOutputFormat::Png)?;
+
+    let content_type = Header::from_str("Content-Type: image/png").unwrap();
+    let response = make_response(200, data).with_header(content_type);
+
+    Ok(response)
 }
 
 fn handle_asset_request(app: AppHandle, request: &Request, path: &str) -> Result<BytesResponse> {
@@ -145,6 +206,7 @@ fn make_xhtml_response(mut xhtml: String) -> BytesResponse {
         origin = origin,
     );
 
+    // TODO: optimize XML manipulation
     if let Some(pos) = find_before_tag_end(&xhtml, "head") {
         let part = format!(
             include_str!("./templates/head-end.html"),
@@ -156,12 +218,12 @@ fn make_xhtml_response(mut xhtml: String) -> BytesResponse {
 
     if let Some(pos) = find_after_tag_start(&xhtml, "body") {
         let part = include_str!("./templates/body-start.html");
-        xhtml.insert_str(pos, &part);
+        xhtml.insert_str(pos, part);
     }
 
     if let Some(pos) = find_before_tag_end(&xhtml, "body") {
         let part = include_str!("./templates/body-end.html");
-        xhtml.insert_str(pos, &part);
+        xhtml.insert_str(pos, part);
     }
 
     find_after_tag_start(&xhtml, "body");
@@ -232,4 +294,18 @@ fn find_before_tag_end(xhtml: &str, name: &str) -> Option<usize> {
         }
         buf.clear();
     }
+}
+
+fn make_cover_thumbnail(epub: &mut EpubFile) -> Result<DynamicImage> {
+    use image::imageops::FilterType;
+    use image::io::Reader;
+
+    let path = epub.rootfile().get_cover_path().context("No cover")?;
+    let data = epub.read_file(&path)?;
+
+    let reader = Reader::new(Cursor::new(data)).with_guessed_format()?;
+    let image = reader.decode()?;
+    let thumbnail = image.resize_to_fill(240, 360, FilterType::Triangle);
+
+    Ok(thumbnail)
 }

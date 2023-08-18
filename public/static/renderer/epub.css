@@ -16,7 +16,7 @@
 
 html {
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow-y: scroll;
 }
 
 body {
@@ -29,6 +29,7 @@ html,
 body {
     font-size: var(--font-size);
     font-family: var(--font-family);
+    font-feature-settings: 'pwid';
 }
 
 p,
@@ -108,29 +109,23 @@ body.ellisia-loaded .ellisia-loading-overlay {
     content: '';
     width: 48px;
     height: 48px;
-    border: 2px solid #aaaaaa;
+    border: 2px solid #9e788f;
     position: absolute;
     left: 0;
     top: 0;
     box-sizing: border-box;
-    animation: ellisia-loading 3s ease-in-out infinite;
+    animation: ellisia-loading 2.5s ease-in-out infinite;
 }
 .ellisia-loading::after {
     border-color: #456990;
-    animation-direction: reverse;
+    animation-delay: -0.2s;
 }
 @keyframes ellisia-loading {
     0% {
         transform: rotate(0);
     }
-    25% {
-        transform: rotate(90deg);
-    }
-    50% {
-        transform: rotate(180deg);
-    }
-    75% {
-        transform: rotate(270deg);
+    90% {
+        transform: rotate(360deg);
     }
     100% {
         transform: rotate(360deg);
@@ -170,4 +165,7 @@ body.ellisia-loaded .ellisia-loading-overlay {
 }
 .ellisia-paginator-bottom a:hover {
     background: rgb(0 0 0 / 10%);
+}
+.ellisia-paginator-bottom a:active {
+    background: rgb(0 0 0 / 15%);
 }

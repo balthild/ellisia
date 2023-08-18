@@ -1,6 +1,7 @@
 import './Navigation.scss';
 
-import { createMemo, createSignal, For } from 'solid-js';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-solid';
+import { createMemo, For } from 'solid-js';
 
 import { EpubNavItem } from '../epub';
 
@@ -12,14 +13,6 @@ export interface NavProps {
 }
 
 export function Navigation(props: NavProps) {
-    let scrollingTimeout: ReturnType<typeof setTimeout>;
-    const [scrolling, setScrolling] = createSignal(false);
-    const onScroll = () => {
-        clearTimeout(scrollingTimeout);
-        setScrolling(true);
-        scrollingTimeout = setTimeout(() => setScrolling(false), 1200);
-    };
-
     const currentNavHref = createMemo(() => {
         if (!props.currentContentPath) return;
 
@@ -42,7 +35,13 @@ export function Navigation(props: NavProps) {
     });
 
     return (
-        <div class="toc" classList={{ scrolling: scrolling() }} onWheel={onScroll}>
+        <OverlayScrollbarsComponent
+            class="toc"
+            options={{
+                overflow: { x: 'hidden', y: 'scroll' },
+                scrollbars: { autoHide: 'scroll' },
+            }}
+        >
             <For each={props.items}>{(item) => (
                 <div
                     class="toc-item"
@@ -52,11 +51,10 @@ export function Navigation(props: NavProps) {
                         hidden: item.level > 1,
                     }}
                     onClick={() => props.onNavigate(item.canonicalPath)}
-                    data-href={item.href}
                 >
                     {item.label}
                 </div>
             )}</For>
-        </div>
+        </OverlayScrollbarsComponent >
     );
 }

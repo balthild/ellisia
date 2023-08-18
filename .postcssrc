@@ -1,0 +1,5 @@
+{
+  "plugins": {
+    "postcss-discard-font-face": ["woff2", "woff2-variations"]
+  }
+}

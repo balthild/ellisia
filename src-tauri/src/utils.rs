@@ -22,8 +22,8 @@ pub fn path_to_bytes(path: &Path) -> Cow<[u8]> {
     Cow::Borrowed(path.as_os_str().as_bytes())
 }
 
-pub fn get_config_dir() -> Result<PathBuf> {
-    let mut path = dirs::config_dir().context("Failed to get user config dir")?;
+pub fn get_config_dir_path() -> Result<PathBuf> {
+    let mut path = dirs::config_dir().context("Failed to get user config dir path")?;
 
     #[cfg(any(target_os = "windows", target_os = "macos"))]
     path.push("Ellisia");
@@ -31,6 +31,18 @@ pub fn get_config_dir() -> Result<PathBuf> {
     path.push("ellisia");
 
     Ok(path)
+}
+
+pub fn init_dir(path: &Path) -> Result<()> {
+    if path.is_file() {
+        std::fs::remove_file(path).context("Failed to init app config directory")?;
+    }
+
+    if !path.exists() {
+        std::fs::create_dir_all(path).context("Failed to init app config directory")?;
+    }
+
+    Ok(())
 }
 
 pub fn now_unix_timestamp() -> u64 {

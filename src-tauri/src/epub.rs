@@ -37,12 +37,14 @@ impl EpubFile {
 
         let mut media_types = HashMap::new();
         for item in &rootfile.package.manifest.children {
-            let path = resolve_relative_path(&rootfile.path, &item.href);
+            let path = rootfile.resolve_href(&item.href);
             media_types.insert(path, item.media_type.clone());
         }
 
         let toc = match &*rootfile.package.version {
-            "2.0" => read_toc(&mut zip, &rootfile)?,
+            "2.0" => read_toc_ncx(&mut zip, &rootfile)?,
+            // TODO: EPUB 3.0 new TOC
+            "3.0" => read_toc_ncx(&mut zip, &rootfile)?,
             x => bail!("Unsupported EPUB version: {x}"),
         };
 
@@ -57,7 +59,7 @@ impl EpubFile {
     }
 
     pub fn path(&self) -> &Utf8NativePath {
-        &*self.path
+        &self.path
     }
 
     pub fn container(&self) -> &EpubContainer {
@@ -109,8 +111,8 @@ fn read_rootfile(zip: &mut EpubZip, container: &EpubContainer) -> Result<EpubRoo
     Ok(EpubRootfile::new(path, package))
 }
 
-fn read_toc(zip: &mut EpubZip, rootfile: &EpubRootfile) -> Result<EpubToc> {
-    let relative_path = &rootfile
+fn read_toc_ncx(zip: &mut EpubZip, rootfile: &EpubRootfile) -> Result<EpubToc> {
+    let href = &rootfile
         .package
         .manifest
         .children
@@ -119,18 +121,8 @@ fn read_toc(zip: &mut EpubZip, rootfile: &EpubRootfile) -> Result<EpubToc> {
         .context("Failed to find ToC file in manifest")?
         .href;
 
-    let path = resolve_relative_path(&rootfile.path, &relative_path);
+    let path = rootfile.resolve_href(href);
     let ncx = read_xml(zip, &path)?;
 
     Ok(EpubToc::new(path, ncx))
-}
-
-fn resolve_relative_path(base: &str, path: &str) -> String {
-    let mut base = Utf8UnixPathBuf::from(base);
-
-    // Like the web, `base` always represents a file, so we need to remove the file name
-    base.pop();
-    base.push(path);
-
-    base.to_string()
 }

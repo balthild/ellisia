@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
 use parking_lot::Mutex;
@@ -6,7 +6,7 @@ use rand::distributions::{Alphanumeric, DistString};
 use typed_path::Utf8NativePathBuf;
 
 use crate::epub::EpubFile;
-use crate::library::{Book, Library};
+use crate::library::{Book, BookMetadata, Library};
 use crate::utils::{clean_path, now_unix_timestamp};
 
 /// Most of the time we do both read and write (e.g. updating reading state),
@@ -45,10 +45,9 @@ impl AppState {
         let path = clean_path(&path);
         // let id = base64_url::encode(path.as_str());
 
-        // TODO: use uuid instead of base64(path)
         let mut library = self.library.lock();
 
-        let book = library.books_mut().iter().find(|(_, book)| book.path == path);
+        let book = library.books().iter().find(|(_, book)| book.path == path);
         let id = match book {
             Some((id, _)) => id.clone(),
             None => {
@@ -59,10 +58,10 @@ impl AppState {
 
                 let book = Book {
                     path: path.to_string(),
-                    hash: "".to_string(),
                     content_path: "".to_string(),
                     content_progress: 0.0,
                     last_read_at: now_unix_timestamp(),
+                    metadata: BookMetadata::default(),
                 };
                 library.books_mut().insert(id.clone(), book);
 
@@ -72,8 +71,14 @@ impl AppState {
 
         if let Entry::Vacant(entry) = self.epubs.entry(id.clone()) {
             let epub = EpubFile::open(path.clone()).context("Failed to open epub.")?;
+
+            let book = library.books_mut().get_mut(&id).unwrap();
+            book.metadata = BookMetadata::new(&epub);
+
             entry.insert(epub);
         }
+
+        library.persist()?;
 
         Ok(id)
     }
