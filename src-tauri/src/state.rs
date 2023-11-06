@@ -7,7 +7,7 @@ use typed_path::Utf8NativePathBuf;
 
 use crate::epub::EpubFile;
 use crate::library::{Book, BookMetadata, Library};
-use crate::utils::{clean_path, now_unix_timestamp};
+use crate::utils::now_unix_timestamp;
 
 /// Most of the time we do both read and write (e.g. updating reading state),
 /// so we don't use a `RwLock<Library>`. Also, we need to persist the entire
@@ -42,7 +42,6 @@ impl AppState {
     }
 
     pub fn open_book(&self, path: Utf8NativePathBuf) -> Result<String> {
-        let path = clean_path(&path);
         // let id = base64_url::encode(path.as_str());
 
         let mut library = self.library.lock();

@@ -50,6 +50,7 @@ p {
     margin-bottom: var(--paragraph-spacing) !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
+    hyphens: auto;
 }
 
 p:not(li p) {
@@ -168,4 +169,10 @@ body.ellisia-loaded .ellisia-loading-overlay {
 }
 .ellisia-paginator-bottom a:active {
     background: rgb(0 0 0 / 15%);
+}
+
+/* Content Styles */
+
+.ellisia-emphasis {
+    background-color: yellow;
 }

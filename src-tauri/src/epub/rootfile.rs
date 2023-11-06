@@ -42,7 +42,8 @@ impl EpubRootfile {
             .find(|meta| meta.name == "cover")
             .map(|meta| &*meta.content)?;
 
-        let href = self.package
+        let href = self
+            .package
             .manifest
             .children
             .iter()

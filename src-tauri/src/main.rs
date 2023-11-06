@@ -70,7 +70,16 @@ fn app_setup(app: &mut App) -> Result<()> {
         }
 
         for arg in args {
-            let path = match PathBuf::from(arg).into_os_string().into_string() {
+            let path = match PathBuf::from(arg).canonicalize() {
+                Ok(path) => path,
+                Err(e) => {
+                    let message = format!("Failed to resolve path:\n{}", e);
+                    dialog::message::<Wry>(None, "Error", message);
+                    continue;
+                }
+            };
+
+            let path = match path.into_os_string().into_string() {
                 Ok(path) => Utf8NativePathBuf::from(path),
                 Err(path) => {
                     let message = format!("Invalid path:\n{}", path.to_string_lossy());
@@ -113,11 +122,11 @@ fn launch_library(app: AppHandle) -> Result<()> {
                 .title("Ellisia")
                 .min_inner_size(900.0, 800.0)
                 .inner_size(1200.0, 900.0)
-                .position(60.0, 60.0)
+                .center()
                 .focused(true)
                 .initialization_script(&script)
                 .build()
-                .context("Failed to create reader window")?;
+                .context("Failed to create library window")?;
 
             #[cfg(any(debug_assertions, feature = "devtools"))]
             window.open_devtools();
@@ -127,7 +136,8 @@ fn launch_library(app: AppHandle) -> Result<()> {
     }
 }
 
-pub fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
+/// `path` must be canonicalized before calling this function.
+fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
     let state = app.state::<AppState>();
     let id = state.open_book(path)?;
     let port = state.renderer_port();
@@ -156,7 +166,7 @@ pub fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
                 .title("Ellisia")
                 .min_inner_size(900.0, 800.0)
                 .inner_size(1200.0, 900.0)
-                .position(60.0, 60.0)
+                .center()
                 .focused(true)
                 .initialization_script(&script)
                 .build()

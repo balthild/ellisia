@@ -1,7 +1,7 @@
 import './Navigation.scss';
 
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-solid';
-import { createMemo, For } from 'solid-js';
+import { createMemo, createSignal, For } from 'solid-js';
 
 import { EpubNavItem } from '../epub';
 
@@ -13,6 +13,8 @@ export interface NavProps {
 }
 
 export function Navigation(props: NavProps) {
+    const [navHrefClicked, setNavHrefClicked] = createSignal<string | undefined>(undefined);
+
     const currentNavHref = createMemo(() => {
         if (!props.currentContentPath) return;
 
@@ -31,8 +33,15 @@ export function Navigation(props: NavProps) {
             }
         }
 
+        setNavHrefClicked(undefined);
+
         return props.currentContentPath;
     });
+
+    const onItemClicked = (item: EpubNavItem) => {
+        setNavHrefClicked(item.href);
+        props.onNavigate(item.absoluteHref);
+    };
 
     return (
         <OverlayScrollbarsComponent
@@ -46,15 +55,15 @@ export function Navigation(props: NavProps) {
                 <div
                     class="toc-item"
                     classList={{
-                        current: item.href === currentNavHref(),
+                        current: item.href === (navHrefClicked() ?? currentNavHref()),
                         child: item.level == 1,
                         hidden: item.level > 1,
                     }}
-                    onClick={() => props.onNavigate(item.canonicalPath)}
+                    onClick={[onItemClicked, item]}
                 >
                     {item.label}
                 </div>
             )}</For>
-        </OverlayScrollbarsComponent >
+        </OverlayScrollbarsComponent>
     );
 }

@@ -8,5 +8,5 @@ export interface EpubNavItem {
     href: string;
     label: string;
     level: number;
-    canonicalPath: string;
+    absoluteHref: string;
 }

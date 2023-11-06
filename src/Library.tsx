@@ -8,6 +8,12 @@ export function Library() {
         books: {} as Record<string, any>,
     });
 
+    const booksSorted = () => {
+        const books = Object.entries(library().books);
+        books.sort((a, b) => b[1].last_read_at - a[1].last_read_at);
+        return books;
+    }
+
     onMount(async () => {
         const library = await invoke<any>('get_library');
         setLibrary(library);
@@ -35,7 +41,7 @@ export function Library() {
                     </tr>
                 </thead>
                 <tbody>
-                    <For each={Object.entries(library().books)}>{([id, book]) => (
+                    <For each={booksSorted()}>{([id, book]) => (
                         <tr
                             onDblClick={[openBook, book]}
                             onClick={[setSelectedBook, id]}

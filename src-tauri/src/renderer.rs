@@ -1,4 +1,3 @@
-
 use std::io::Cursor;
 use std::str::FromStr;
 use std::sync::LazyLock;
@@ -30,6 +29,7 @@ pub fn start_http_server(app: AppHandle) -> Result<u16> {
     std::thread::spawn(move || {
         for request in server.incoming_requests() {
             let app = app.clone();
+            println!("Spawn {}", request.url());
             pool.spawn(move || {
                 if let Err(e) = handle_request(app, request) {
                     eprintln!("Error handling request:\n{:?}", e);
@@ -225,8 +225,6 @@ fn make_xhtml_response(mut xhtml: String) -> BytesResponse {
         let part = include_str!("./templates/body-end.html");
         xhtml.insert_str(pos, part);
     }
-
-    find_after_tag_start(&xhtml, "body");
 
     Response::from_data(xhtml)
         .with_status_code(200)

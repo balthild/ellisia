@@ -4,5 +4,5 @@
          local('HarmonyOS Sans SC'),
          local('HarmonyOS Sans TC'),
          url('./fonts/HarmonyOSHans-VF.ttf.woff2') format('woff2-variations');
-    font-display: block;
+    font-display: swap;
 }

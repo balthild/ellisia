@@ -25,7 +25,7 @@ function scrollToHash() {
 
     // Scroll to the element with an offset of 1/4 window height
     const rect = element.getBoundingClientRect();
-    const position = window.pageYOffset + rect.top;
+    const position = window.scrollY + rect.top;
     const offset = window.innerHeight / 4;
     window.scrollTo(0, position - offset);
 }
@@ -47,7 +47,7 @@ function cacheSegmentsPositions() {
         const rect = element.getBoundingClientRect();
         return {
             id: element.id,
-            position: rect.top + window.pageYOffset,
+            position: rect.top + window.scrollY,
         }
     });
 
@@ -55,13 +55,13 @@ function cacheSegmentsPositions() {
 }
 
 let lastNearestSegmentId = undefined;
-function reportTocNavigation() {
+function reportTocPosition() {
     if (ELLISIA_BLANK_PAGE) return;
 
     if (segmentsPositions.length === 0) return;
 
     let segments = segmentsPositions.filter((item) => {
-        return item.position < window.pageYOffset + window.innerHeight / 2;
+        return item.position < window.scrollY + window.innerHeight / 2;
     });
 
     const nearest = segments[segments.length - 1];
@@ -77,13 +77,13 @@ function reportProgress() {
     if (ELLISIA_BLANK_PAGE) return;
 
     const height = document.body.scrollHeight - window.innerHeight;
-    const progress = window.pageYOffset / height;
+    const progress = window.scrollY / height;
     postAppMessage('progress', { progress });
 }
 
 function onNavigated() {
     reportLoaded();
-    reportTocNavigation();
+    reportTocPosition();
     reportProgress();
 }
 
@@ -95,16 +95,28 @@ function navigateInSamePage() {
 function handleMessages(event) {
     switch (event.data.action) {
         case 'navigate':
-            // If the entire URL is not changed, location.replace() will do nothing
+            // If the entire URL is not changed, location.replace() will do nothing,
+            // so we need to handle it manually
             if (event.data.url === location.href) {
                 navigateInSamePage();
                 break;
             }
 
-            // If only the hash is changed, 'hashchange' event will be emitted
-            // If the part before hash is changed, page will be reloaded
+            // If only the hash is changed, it will emit the `hashchange` event
+            // If the part before hash is changed, it will reload the page
             location.replace(event.data.url);
             break;
+    }
+}
+
+function highlightItalics() {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+    let element;
+    while (element = walker.nextNode()) {
+        const style = window.getComputedStyle(element);
+        if (style.fontStyle === 'italic') {
+            element.classList.add('ellisia-emphasis');
+        }
     }
 }
 
@@ -150,7 +162,7 @@ window.addEventListener('load', () => {
     scrollToHash();
 
     window.addEventListener('scroll', _.throttle(reportProgress, 1000), { passive: true });
-    window.addEventListener('scroll', _.throttle(reportTocNavigation, 100), { passive: true });
+    window.addEventListener('scroll', _.throttle(reportTocPosition, 100), { passive: true });
 
     window.addEventListener(
         'resize',
@@ -161,4 +173,6 @@ window.addEventListener('load', () => {
     onNavigated();
 
     document.body.classList.add('ellisia-loaded');
+
+    setTimeout(highlightItalics, 20);
 });

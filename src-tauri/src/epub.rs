@@ -4,7 +4,7 @@ use std::io::{BufReader, Read};
 
 use anyhow::{bail, Context, Result};
 use serde::de::DeserializeOwned;
-use typed_path::{Utf8NativePath, Utf8NativePathBuf, Utf8UnixPathBuf};
+use typed_path::{Utf8NativePath, Utf8NativePathBuf};
 use zip::ZipArchive;
 
 use self::container::EpubContainer;
