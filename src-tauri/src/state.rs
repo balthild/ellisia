@@ -57,8 +57,7 @@ impl AppState {
 
                 let book = Book {
                     path: path.to_string(),
-                    content_path: "".to_string(),
-                    content_progress: 0.0,
+                    location: None,
                     last_read_at: now_unix_timestamp(),
                     metadata: BookMetadata::default(),
                 };

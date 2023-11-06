@@ -34,12 +34,15 @@
         text-align: center;
 
         &:disabled {
-            color: #999999;
+            color: #bbbbbb;
+        }
+
+        &:not(:disabled) {
+            cursor: pointer;
         }
 
         &:not(:disabled):hover {
             background: #e8e8e8;
-            cursor: pointer;
         }
 
         &:not(:disabled):active {

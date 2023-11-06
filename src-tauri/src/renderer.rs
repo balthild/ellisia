@@ -29,7 +29,6 @@ pub fn start_http_server(app: AppHandle) -> Result<u16> {
     std::thread::spawn(move || {
         for request in server.incoming_requests() {
             let app = app.clone();
-            println!("Spawn {}", request.url());
             pool.spawn(move || {
                 if let Err(e) = handle_request(app, request) {
                     eprintln!("Error handling request:\n{:?}", e);

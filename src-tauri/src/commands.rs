@@ -61,37 +61,26 @@ pub fn get_toc(app: AppHandle, id: &str) -> Result<EpubToc, CommandError> {
 pub fn get_rootfile(app: AppHandle, id: &str) -> Result<EpubRootfile, CommandError> {
     let state = app.state::<AppState>();
     let epub = state.epubs().get(id).context("Book not opened")?;
-    let toc = epub.rootfile().clone();
-    Ok(toc)
+    let rootfile = epub.rootfile().clone();
+    Ok(rootfile)
 }
 
 #[tauri::command]
-pub fn get_progress(app: AppHandle, id: &str) -> Result<(String, f64), CommandError> {
+pub fn get_progress(app: AppHandle, id: &str) -> Result<Option<String>, CommandError> {
     let state = app.state::<AppState>();
-    let mut library = state.library().lock();
-
-    let (path, progress) = match library.books_mut().get(id) {
-        Some(book) => (book.content_path.clone(), book.content_progress),
-        None => ("".to_string(), 0.0),
-    };
-
-    Ok((path, progress))
+    let library = state.library().lock();
+    let location = library.books().get(id).and_then(|x| x.location.to_owned());
+    Ok(location)
 }
 
 #[tauri::command]
-pub fn save_progress(
-    app: AppHandle,
-    id: &str,
-    path: &str,
-    progress: f64,
-) -> Result<(), CommandError> {
+pub fn save_progress(app: AppHandle, id: &str, location: &str) -> Result<(), CommandError> {
     let state = app.state::<AppState>();
     let mut library = state.library().lock();
 
     match library.books_mut().get_mut(id) {
         Some(book) => {
-            book.content_path = path.to_string();
-            book.content_progress = progress;
+            book.location = Some(location.to_string());
             book.last_read_at = now_unix_timestamp();
         }
         None => {
@@ -101,8 +90,7 @@ pub fn save_progress(
                 id.to_string(),
                 Book {
                     path: epub.path().to_string(),
-                    content_path: path.to_string(),
-                    content_progress: progress,
+                    location: Some(location.to_string()),
                     last_read_at: now_unix_timestamp(),
                     metadata: BookMetadata::new(&epub),
                 },

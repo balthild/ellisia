@@ -55,8 +55,7 @@ impl Library {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Book {
     pub path: String,
-    pub content_path: String,
-    pub content_progress: f64,
+    pub location: Option<String>,
     pub last_read_at: u64,
     #[serde(default)]
     pub metadata: BookMetadata,
