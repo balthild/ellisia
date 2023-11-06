@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use anyhow::{bail, Context, Result};
 use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
@@ -7,7 +9,6 @@ use typed_path::Utf8NativePathBuf;
 
 use crate::epub::EpubFile;
 use crate::library::{Book, BookMetadata, Library};
-use crate::utils::now_unix_timestamp;
 
 /// Most of the time we do both read and write (e.g. updating reading state),
 /// so we don't use a `RwLock<Library>`. Also, we need to persist the entire
@@ -58,7 +59,7 @@ impl AppState {
                 let book = Book {
                     path: path.to_string(),
                     location: None,
-                    last_read_at: now_unix_timestamp(),
+                    last_read_at: SystemTime::now(),
                     metadata: BookMetadata::default(),
                 };
                 library.books_mut().insert(id.clone(), book);

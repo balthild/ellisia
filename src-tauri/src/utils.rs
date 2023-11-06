@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use typed_path::{
@@ -43,13 +42,6 @@ pub fn init_dir(path: &Path) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn now_unix_timestamp() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs()
 }
 
 pub fn clean_path(path: &Utf8NativePath) -> Utf8NativePathBuf {

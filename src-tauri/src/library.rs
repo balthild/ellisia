@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -56,7 +57,8 @@ impl Library {
 pub struct Book {
     pub path: String,
     pub location: Option<String>,
-    pub last_read_at: u64,
+    #[serde(with = "humantime_serde")]
+    pub last_read_at: SystemTime,
     #[serde(default)]
     pub metadata: BookMetadata,
 }

@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use anyhow::Context;
 use serde::Serialize;
 use tauri::api::dialog;
@@ -9,7 +11,6 @@ use crate::epub::toc::EpubToc;
 use crate::error::CommandError;
 use crate::library::{Book, BookMetadata};
 use crate::state::AppState;
-use crate::utils::now_unix_timestamp;
 
 /// This handler creating new windows needs to be `async` to avoid deadlocks.
 /// See https://tauri.app/v1/guides/features/multiwindow/#create-a-window-using-an-apphandle-instance
@@ -81,7 +82,7 @@ pub fn save_progress(app: AppHandle, id: &str, location: &str) -> Result<(), Com
     match library.books_mut().get_mut(id) {
         Some(book) => {
             book.location = Some(location.to_string());
-            book.last_read_at = now_unix_timestamp();
+            book.last_read_at = SystemTime::now();
         }
         None => {
             // Should not happen, but anyway we just create it.
@@ -91,7 +92,7 @@ pub fn save_progress(app: AppHandle, id: &str, location: &str) -> Result<(), Com
                 Book {
                     path: epub.path().to_string(),
                     location: Some(location.to_string()),
-                    last_read_at: now_unix_timestamp(),
+                    last_read_at: SystemTime::now(),
                     metadata: BookMetadata::new(&epub),
                 },
             );
