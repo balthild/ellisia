@@ -4,7 +4,7 @@ export function clamp(n: number, lowerBound: number, upperBound: number) {
     return n;
 }
 
-const __DEV__ = process.env.NODE_ENV !== "production";
+const __DEV__ = process.env.NODE_ENV !== 'production';
 export const readOnly: <T>(obj: T) => Readonly<T> = __DEV__
     ? (obj) => Object.freeze(obj)
     : (obj) => obj;

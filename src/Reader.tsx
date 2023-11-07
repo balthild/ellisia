@@ -6,7 +6,7 @@ import { createSignal, onCleanup } from 'solid-js';
 
 import { Navigation, TocItem } from './components/Navigation';
 import { Toolbar } from './components/Toolbar';
-import { IframeViewWithCSP } from './epub/IframeViewWithCSP';
+import { IframeViewWithCSP } from './epubjs/IframeViewWithCSP';
 import { AbstractHistory } from './history';
 
 export function Reader() {
@@ -107,7 +107,7 @@ export function Reader() {
             history.replace(location.start.cfi);
             invoke('save_progress', {
                 id: ELLISIA.book.id,
-                location: location.start.cfi
+                location: location.start.cfi,
             });
         });
 
@@ -117,7 +117,7 @@ export function Reader() {
             contents.on('linkClicked', (href: string) => {
                 const relative = book.path.relative(href);
                 history.push(relative);
-			});
+            });
 
             contents.document.querySelectorAll('a.ellisia-prev').forEach((element) => {
                 element.addEventListener('click', (event) => {
@@ -151,9 +151,12 @@ export function Reader() {
             contents.document.body.classList.add('ellisia-loaded');
 
             setTimeout(() => {
-                const walker = contents.document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+                const walker = contents.document.createTreeWalker(
+                    document.body,
+                    NodeFilter.SHOW_ELEMENT
+                );
                 let element;
-                while (element = walker.nextNode() as Element) {
+                while ((element = walker.nextNode() as Element)) {
                     const style = window.getComputedStyle(element);
                     if (style.fontStyle === 'italic') {
                         element.classList.add('ellisia-emphasis');
@@ -175,11 +178,7 @@ export function Reader() {
             <Toolbar history={history} />
 
             <div class="main">
-                <Navigation
-                    items={tocItems()}
-                    current={currentTocItem()}
-                    onNavigate={navigate}
-                />
+                <Navigation items={tocItems()} current={currentTocItem()} onNavigate={navigate} />
 
                 <div class="content">
                     <div ref={attachEpubView} class="rendered" />

@@ -9,10 +9,22 @@ export function Library() {
     });
 
     const booksSorted = () => {
-        const books = Object.entries(library().books);
-        books.sort((a, b) => b[1].last_read_at - a[1].last_read_at);
+        const books = Object.entries(library().books).map(([id, book]) => {
+            let last_read_at = undefined;
+            if (book.last_read_at) {
+                last_read_at = new Date(book.last_read_at);
+            }
+            return {
+                ...book,
+                id,
+                last_read_at,
+            };
+        });
+        books.sort((a, b) => {
+            return b.last_read_at?.getTime() - a.last_read_at?.getTime();
+        });
         return books;
-    }
+    };
 
     onMount(async () => {
         const library = await invoke<any>('get_library');
@@ -26,7 +38,7 @@ export function Library() {
     const openBook = async (book: any) => {
         const result = await invoke<boolean>('open_book', { path: book.path });
         if (result) {
-            await invoke<boolean>('close_library')
+            await invoke<boolean>('close_library');
         }
     };
 
@@ -41,30 +53,37 @@ export function Library() {
                     </tr>
                 </thead>
                 <tbody>
-                    <For each={booksSorted()}>{([id, book]) => (
-                        <tr
-                            onDblClick={[openBook, book]}
-                            onClick={[setSelectedBook, id]}
-                            classList={{ selected: selectedBook() === id }}
-                        >
-                            <td>
-                                <img
-                                    class="cover cover-thumbnail"
-                                    classList={{ errored: erroredCover().includes(id) }}
-                                    src={`${ELLISIA.renderer}/cover/${id}.png`}
-                                    onError={() => setErroredCover(xs => [...xs, id])}
-                                />
-                                <div class='cover cover-text' classList={{ errored: erroredCover().includes(id) }}>
-                                    {(book.metadata.title ?? getFilename(book.path))[0]}
-                                </div>
-                            </td>
-                            <td>
-                                <div class="title">{book.metadata.title ?? getFilename(book.path)}</div>
-                                <div class="author">{book.metadata.author}</div>
-                            </td>
-                            <td class="nowrap">{new Date(book.last_read_at * 1000).toLocaleString()}</td>
-                        </tr>
-                    )}</For>
+                    <For each={booksSorted()}>
+                        {(book) => (
+                            <tr
+                                onDblClick={[openBook, book]}
+                                onClick={[setSelectedBook, book.id]}
+                                classList={{ selected: selectedBook() === book.id }}
+                            >
+                                <td>
+                                    <img
+                                        class="cover cover-thumbnail"
+                                        classList={{ errored: erroredCover().includes(book.id) }}
+                                        src={`${ELLISIA.renderer}/cover/${book.id}.png`}
+                                        onError={() => setErroredCover((xs) => [...xs, book.id])}
+                                    />
+                                    <div
+                                        class="cover cover-text"
+                                        classList={{ errored: erroredCover().includes(book.id) }}
+                                    >
+                                        {(book.metadata.title ?? getFilename(book.path))[0]}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="title">
+                                        {book.metadata.title ?? getFilename(book.path)}
+                                    </div>
+                                    <div class="author">{book.metadata.author}</div>
+                                </td>
+                                <td class="nowrap">{book.last_read_at.toLocaleString()}</td>
+                            </tr>
+                        )}
+                    </For>
                 </tbody>
             </table>
         </div>
@@ -73,6 +92,6 @@ export function Library() {
 
 function getFilename(path: string) {
     let url = new URL(`file://${path}`);
-    const filename = url.pathname.split("/").pop();
+    const filename = url.pathname.split('/').pop();
     return decodeURIComponent(filename!);
 }

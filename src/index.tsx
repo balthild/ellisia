@@ -10,8 +10,8 @@ import { Library } from './Library';
 import { Reader } from './Reader';
 
 render(
-    () => ELLISIA.book ? <Reader /> : <Library />,
-    document.getElementById("app") as HTMLElement,
+    () => (ELLISIA.book ? <Reader /> : <Library />),
+    document.getElementById('app') as HTMLElement
 );
 
 document.addEventListener('contextmenu', (event) => event.preventDefault());

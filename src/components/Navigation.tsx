@@ -16,20 +16,6 @@ export interface NavProps {
 }
 
 export function Navigation(props: NavProps) {
-    const renderItem = (item: TocItem) => (
-        <div
-            class="toc-item"
-            classList={{
-                current: item.id === props.current?.id,
-                child: item.level == 1,
-                hidden: item.level > 1,
-            }}
-            onClick={() => props.onNavigate(item.href)}
-        >
-            {item.label}
-        </div>
-    );
-
     return (
         <OverlayScrollbarsComponent
             class="toc"
@@ -38,7 +24,21 @@ export function Navigation(props: NavProps) {
                 scrollbars: { autoHide: 'scroll' },
             }}
         >
-            <For each={props.items}>{(item) => renderItem(item)}</For>
+            <For each={props.items}>
+                {(item) => (
+                    <div
+                        class="toc-item"
+                        classList={{
+                            current: item.id === props.current?.id,
+                            child: item.level == 1,
+                            hidden: item.level > 1,
+                        }}
+                        onClick={() => props.onNavigate(item.href)}
+                    >
+                        {item.label}
+                    </div>
+                )}
+            </For>
         </OverlayScrollbarsComponent>
     );
 }
