@@ -12,6 +12,7 @@ use regex::Regex;
 use tauri::{AppHandle, Manager};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 use typed_path::Utf8NativePathBuf;
+use zip::result::ZipError;
 
 use crate::epub::EpubFile;
 use crate::state::AppState;
@@ -83,7 +84,20 @@ fn handle_book_request(app: AppHandle, path: &str) -> Result<BytesResponse> {
     let state = app.state::<AppState>();
     let mut epub = state.epubs().get_mut(id).context("Book not opened")?;
 
-    let content = epub.read_file(path)?;
+    let content = match epub.read_file(path) {
+        Ok(content) => content,
+        Err(e) => match e.root_cause().downcast_ref::<ZipError>() {
+            Some(ZipError::FileNotFound) => {
+                let response = make_response(404, format!("File not found: {path}"));
+                return Ok(response);
+            }
+            _ => {
+                let response = make_response(500, format!("Failed to read file: {path}\n{e}"));
+                return Ok(response);
+            }
+        },
+    };
+
     let media_type = epub.get_media_type(path).unwrap_or("text/plain");
 
     let response = match media_type {
@@ -164,9 +178,10 @@ fn handle_asset_request(app: AppHandle, request: &Request, path: &str) -> Result
     }
 
     let resolver = app.asset_resolver();
-    let asset = resolver
-        .get(path.to_string())
-        .context("Failed to get asset")?;
+    let Some(asset) = resolver.get(path.to_string()) else {
+        let response = make_response(404, format!("Not Found: {path}"));
+        return Ok(response);
+    };
 
     let ctyp = format!("Content-Type: {}", asset.mime_type);
     let clen = format!("Content-Length: {}", asset.bytes.len());
@@ -209,7 +224,7 @@ fn make_xhtml_response(mut xhtml: String) -> BytesResponse {
     if let Some(pos) = find_before_tag_end(&xhtml, "head") {
         let part = format!(
             include_str!("./templates/head-end.html"),
-            nonce = nonce,
+            // nonce = nonce,
             base = base,
         );
         xhtml.insert_str(pos, &part);

@@ -5,9 +5,9 @@
 )]
 #![feature(lazy_cell)]
 
+use std::env;
 use std::error::Error;
 use std::path::PathBuf;
-use std::env;
 
 use anyhow::{Context, Result};
 use serde_json::json;
@@ -16,7 +16,7 @@ use tauri::api::dialog;
 use tauri::http::{Request, Response};
 use tauri::{App, AppHandle, Manager, WindowBuilder, WindowUrl, Wry};
 use typed_path::Utf8NativePathBuf;
-use utils::{get_config_dir_path, init_dir, clean_path};
+use utils::{get_config_dir_path, init_dir};
 
 pub mod commands;
 pub mod epub;
@@ -112,9 +112,9 @@ fn launch_library(app: AppHandle) -> Result<()> {
         None => {
             let url = WindowUrl::App("index.html".into());
 
-            let script = format!("const ELLISIA = {};", json!({
+            let config = json!({
                 "renderer": format!("http://127.0.0.1:{port}"),
-            }));
+            });
 
             let window = WindowBuilder::new(&app, "library", url)
                 .title("Ellisia")
@@ -122,7 +122,7 @@ fn launch_library(app: AppHandle) -> Result<()> {
                 .inner_size(1200.0, 900.0)
                 .center()
                 .focused(true)
-                .initialization_script(&script)
+                .initialization_script(&format!("const ELLISIA = {config};"))
                 .build()
                 .context("Failed to create library window")?;
 
@@ -153,15 +153,13 @@ fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
             let origin = "book://localhost";
             */
 
-            clean_path(&path);
-
-            let script = format!("const ELLISIA = {};", json!({
+            let config = json!({
                 "book": {
                     "id": id,
                     "path": path.as_str(),
                 },
                 "renderer": format!("http://127.0.0.1:{port}"),
-            }));
+            });
 
             let window = WindowBuilder::new(&app, id, url)
                 .title("Ellisia")
@@ -169,7 +167,7 @@ fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
                 .inner_size(1200.0, 900.0)
                 .center()
                 .focused(true)
-                .initialization_script(&script)
+                .initialization_script(&format!("const ELLISIA = {config};"))
                 // .on_navigation(|_| false)
                 // .on_web_resource_request(|request, response| {})
                 .build()
