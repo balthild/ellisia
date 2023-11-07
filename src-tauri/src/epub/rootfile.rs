@@ -39,8 +39,8 @@ impl EpubRootfile {
             .metadata
             .meta
             .iter()
-            .find(|meta| meta.name == "cover")
-            .map(|meta| &*meta.content)?;
+            .find(|meta| meta.name.as_deref() == Some("cover"))
+            .and_then(|meta| meta.content.as_deref())?;
 
         let href = self
             .package
@@ -95,9 +95,9 @@ pub struct EpubRootfileMetadataIdentifier {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EpubRootfileMetadataMeta {
     #[serde(rename(deserialize = "@name"))]
-    pub name: String,
+    pub name: Option<String>,
     #[serde(rename(deserialize = "@content"))]
-    pub content: String,
+    pub content: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

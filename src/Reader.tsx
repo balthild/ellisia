@@ -4,6 +4,10 @@ import { invoke } from '@tauri-apps/api';
 import { Book, Contents, EpubCFI, Location } from 'epubjs';
 import { createSignal, onCleanup } from 'solid-js';
 
+import BODY_END from './assets/body-end.html?raw';
+import BODY_START from './assets/body-start.html?raw';
+import CSP from './assets/csp.txt?raw';
+import HEAD_END from './assets/head-end.html?raw';
 import { Navigation, TocItem } from './components/Navigation';
 import { Toolbar } from './components/Toolbar';
 import { IframeViewWithCSP } from './epubjs/IframeViewWithCSP';
@@ -98,8 +102,22 @@ export function Reader() {
 
         await book.ready;
 
+        // Process document before it is rendered to iframe
         book.spine.hooks.content.register((document: Document) => {
-            // process document before it is rendered to iframe
+            const assets = import.meta.env.DEV ? 'http://localhost:1420' : ELLISIA.renderer;
+            document.head.insertAdjacentHTML('beforeend', HEAD_END.replaceAll('{assets}', assets));
+            document.body.insertAdjacentHTML('afterbegin', BODY_START);
+            document.body.insertAdjacentHTML('beforeend', BODY_END);
+
+            document.head
+                .querySelectorAll('meta[http-equiv="Content-Security-Policy"]')
+                .forEach((element) => element.remove());
+
+            const origins = `${ELLISIA.renderer} ${assets}`;
+            const csp = document.createElement('meta');
+            csp.setAttribute('http-equiv', 'Content-Security-Policy');
+            csp.setAttribute('content', CSP.replaceAll('{origins}', origins));
+            document.head.appendChild(csp);
         });
 
         rendition.on('relocated', (location: Location) => {
@@ -111,9 +129,8 @@ export function Reader() {
             });
         });
 
+        // Process document after it is rendered to iframe
         rendition.hooks.content.register((contents: Contents) => {
-            // process document after it is rendered to iframe
-
             contents.on('linkClicked', (href: string) => {
                 const relative = book.path.relative(href);
                 history.push(relative);

@@ -22,17 +22,10 @@ icon = [
     "icons/icon.ico"
 ]
 identifier = "com.balthild.ellisia"
-targets = "all"
+targets = ["nsis"]
 
 [tauri.security]
 # csp = ''
 
 [tauri.updater]
 active = false
-
-#[[tauri.windows]]
-#fullscreen = false
-#resizable = true
-#title = "Ellisia"
-#minWidth = 900
-#minHeight = 800

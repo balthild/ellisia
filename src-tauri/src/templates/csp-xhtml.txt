@@ -1,5 +1,0 @@
-Content-Security-Policy: default-src 'none';
-                         img-src {origin} 'self';
-                         font-src {origin} 'self';
-                         style-src {origin} 'self' 'unsafe-inline';
-                         script-src 'nonce-{nonce}';

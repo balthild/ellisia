@@ -4,9 +4,6 @@ use std::sync::LazyLock;
 
 use anyhow::{anyhow, Context, Result};
 use image::{DynamicImage, ImageOutputFormat};
-use quick_xml::events::Event;
-use quick_xml::reader::Reader;
-use rand::distributions::{Alphanumeric, DistString};
 use rayon_core::ThreadPoolBuilder;
 use regex::Regex;
 use tauri::{AppHandle, Manager};
@@ -61,8 +58,7 @@ fn handle_request(app: AppHandle, request: Request) -> Result<()> {
 }
 
 fn handle_root_request() -> Result<BytesResponse> {
-    let blank = include_str!("./templates/blank.html").to_string();
-    let response = make_xhtml_response(blank);
+    let response = make_response(204, []);
     Ok(response)
 }
 
@@ -99,17 +95,8 @@ fn handle_book_request(app: AppHandle, path: &str) -> Result<BytesResponse> {
     };
 
     let media_type = epub.get_media_type(path).unwrap_or("text/plain");
-
-    let response = match media_type {
-        "application/xhtml+xml" => {
-            let xhtml = String::from_utf8(content)?;
-            make_xhtml_response(xhtml)
-        }
-        _ => {
-            let content_type = format!("Content-Type: {media_type}");
-            make_response(200, content).with_header(Header::from_str(&content_type).unwrap())
-        }
-    };
+    let content_type = Header::from_str(&format!("Content-Type: {media_type}")).unwrap();
+    let response = make_response(200, content).with_header(content_type);
 
     Ok(response)
 }
@@ -197,115 +184,9 @@ fn handle_asset_request(app: AppHandle, request: &Request, path: &str) -> Result
 }
 
 fn make_response<T: Into<Vec<u8>>>(status: u16, body: T) -> BytesResponse {
-    let csp = include_str!("./templates/csp.txt");
-
     Response::from_data(body)
         .with_status_code(status)
         .with_header(Header::from_str("Access-Control-Allow-Origin: *").unwrap())
-        .with_header(Header::from_str(csp).unwrap())
-}
-
-fn make_xhtml_response(mut xhtml: String) -> BytesResponse {
-    let base = get_assets_base();
-    let nonce = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
-
-    #[cfg(debug_assertions)]
-    let origin = base;
-    #[cfg(not(debug_assertions))]
-    let origin = "";
-
-    let csp = format!(
-        include_str!("./templates/csp-xhtml.txt"),
-        nonce = nonce,
-        origin = origin,
-    );
-
-    // TODO: optimize XML manipulation
-    if let Some(pos) = find_before_tag_end(&xhtml, "head") {
-        let part = format!(
-            include_str!("./templates/head-end.html"),
-            // nonce = nonce,
-            base = base,
-        );
-        xhtml.insert_str(pos, &part);
-    }
-
-    if let Some(pos) = find_after_tag_start(&xhtml, "body") {
-        let part = include_str!("./templates/body-start.html");
-        xhtml.insert_str(pos, part);
-    }
-
-    if let Some(pos) = find_before_tag_end(&xhtml, "body") {
-        let part = include_str!("./templates/body-end.html");
-        xhtml.insert_str(pos, part);
-    }
-
-    Response::from_data(xhtml)
-        .with_status_code(200)
-        .with_header(Header::from_str("Access-Control-Allow-Origin: *").unwrap())
-        .with_header(Header::from_str("Content-Type: application/xhtml+xml").unwrap())
-        .with_header(Header::from_str(&csp).unwrap())
-}
-
-fn get_assets_base() -> &'static str {
-    #[cfg(debug_assertions)]
-    return "http://localhost:1420/static/";
-    #[cfg(not(debug_assertions))]
-    return "/static/";
-    // #[cfg(all(not(debug_assertions), windows))]
-    // return "https://tauri.localhost/";
-    // #[cfg(all(not(debug_assertions), unix))]
-    // return "tauri://localhost/";
-}
-
-fn find_after_tag_start(xhtml: &str, name: &str) -> Option<usize> {
-    let mut buf = Vec::new();
-    let mut reader = Reader::from_str(xhtml);
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(x)) if x.name().as_ref() == name.as_bytes() => {
-                break Some(reader.buffer_position());
-            }
-            Ok(Event::Eof) => {
-                eprintln!("Failed to find <{name}> tag in XHTML");
-                break None;
-            }
-            Err(e) => {
-                eprintln!("Failed to parse XHTML: {:?}", e);
-                break None;
-            }
-            _ => {}
-        }
-        buf.clear();
-    }
-}
-
-fn find_before_tag_end(xhtml: &str, name: &str) -> Option<usize> {
-    let mut buf = Vec::new();
-    let mut reader = Reader::from_str(xhtml);
-
-    let mut last_pos = 0;
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::End(x)) if &*x == name.as_bytes() => {
-                break Some(last_pos);
-            }
-            Ok(Event::Eof) => {
-                eprintln!("Failed to find </{name}> tag in XHTML");
-                break None;
-            }
-            Err(e) => {
-                eprintln!("Failed to parse XHTML: {:?}", e);
-                break None;
-            }
-            _ => {
-                last_pos = reader.buffer_position();
-            }
-        }
-        buf.clear();
-    }
 }
 
 fn make_cover_thumbnail(epub: &mut EpubFile) -> Result<DynamicImage> {

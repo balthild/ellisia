@@ -1,0 +1,5 @@
+default-src 'none';
+img-src {origins} 'self';
+font-src {origins} 'self';
+style-src {origins} 'self' 'unsafe-inline';
+script-src 'none';
