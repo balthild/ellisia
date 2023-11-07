@@ -77,8 +77,6 @@ impl AppState {
             entry.insert(epub);
         }
 
-        library.persist()?;
-
         Ok(id)
     }
 }

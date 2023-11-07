@@ -11,7 +11,7 @@ export interface TocItem extends NavItem {
 
 export interface NavProps {
     items: TocItem[];
-    currentId: string | undefined;
+    current: TocItem | undefined;
     onNavigate: (href: string) => void;
 }
 
@@ -20,7 +20,7 @@ export function Navigation(props: NavProps) {
         <div
             class="toc-item"
             classList={{
-                current: item.id === props.currentId,
+                current: item.id === props.current?.id,
                 child: item.level == 1,
                 hidden: item.level > 1,
             }}

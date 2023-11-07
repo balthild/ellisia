@@ -4,7 +4,6 @@
     --line-height: 1.7;
     --paragraph-spacing: 10px;
     --paragraph-indent: 2em;
-    --page-padding: 2rem;
     --text-width: 30rem;
     --text-align: justify;
 }
@@ -14,14 +13,9 @@
     background: #c8d6e4;
 }
 
-html {
-    overflow-x: hidden;
-    overflow-y: scroll;
-}
-
 body {
     margin: 0 auto !important;
-    padding: var(--page-padding) !important;
+    padding: 0 !important;
     max-width: var(--text-width) !important;
 }
 
@@ -32,17 +26,17 @@ body {
     font-feature-settings: 'pwid';
 }
 
-p,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+p:not([class^="ellisia-"]),
+h1:not([class^="ellisia-"]),
+h2:not([class^="ellisia-"]),
+h3:not([class^="ellisia-"]),
+h4:not([class^="ellisia-"]),
+h5:not([class^="ellisia-"]),
+h6:not([class^="ellisia-"]) {
     font-family: var(--font-family) !important;
 }
 
-p {
+p:not([class^="ellisia-"]) {
     font-size: var(--font-size) !important;
     text-align: var(--text-align) !important;
     line-height: var(--line-height) !important;
@@ -53,11 +47,11 @@ p {
     hyphens: auto;
 }
 
-p:not(li p) {
+p:not([class^="ellisia-"]):not(li p) {
     text-indent: var(--paragraph-indent) !important;
 }
 
-img {
+img:not([class^="ellisia-"]) {
     max-width: calc(100% - 2 * var(--paragraph-indent));
     height: auto;
 }
@@ -95,9 +89,6 @@ img {
     justify-content: center;
     align-items: center;
     background: #f6f6f6;
-
-    /* todo */
-    display: none;
 }
 body.ellisia-loaded .ellisia-loading-overlay {
     display: none;
@@ -149,6 +140,14 @@ body.ellisia-loaded .ellisia-loading-overlay {
     color: #3c5b7c;
 }
 
+.ellisia-paginator-margin {
+    margin: 0 !important;
+    font-size: 2rem;
+    line-height: 2rem;
+    color: transparent;
+    opacity: 0;
+    text-indent: -100vw;
+}
 .ellisia-paginator-top {
     margin: 0 0 3rem;
     display: flex;

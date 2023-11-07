@@ -1,4 +1,5 @@
-/// <reference path="./index.d.ts" />
+/// <reference path="./types/index.d.ts" />
+/// <reference path="./types/epubjs.d.ts" />
 
 /* @refresh reload */
 import './styles.scss';
@@ -9,7 +10,7 @@ import { Library } from './Library';
 import { Reader } from './Reader';
 
 render(
-    () => BOOK_ID ? <Reader /> : <Library />,
+    () => ELLISIA.book ? <Reader /> : <Library />,
     document.getElementById("app") as HTMLElement,
 );
 

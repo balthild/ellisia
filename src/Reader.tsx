@@ -6,6 +6,7 @@ import { createSignal, onCleanup } from 'solid-js';
 
 import { Navigation, TocItem } from './components/Navigation';
 import { Toolbar } from './components/Toolbar';
+import { IframeViewWithCSP } from './epub/IframeViewWithCSP';
 import { AbstractHistory } from './history';
 
 export function Reader() {
@@ -13,16 +14,17 @@ export function Reader() {
     history.listen((update) => {
         // Auto sync only for back/forward. Ignore push/replace.
         if (update.action === 'POP') {
-            renderTarget(update.location.state);
+            displaySection(update.location.state);
         }
     });
 
     const navigate = (state: string) => {
         history.push(state);
-        renderTarget(state);
+        displaySection(state);
     };
 
-    let book = new Book(`${RENDERER}/book/${BOOK_ID}/`);
+    let book = new Book(`${ELLISIA.renderer}/book/${ELLISIA.book.id}/`);
+    onCleanup(() => book.destroy());
 
     const getCfiFromHref = async (href: string) => {
         const [path, segment] = href.split('#');
@@ -35,8 +37,8 @@ export function Reader() {
         return section.cfiFromElement(element ?? section.document.body);
     };
 
-    const [toc, setToc] = createSignal<TocItem[]>([]);
-    const [tocCurrentId, setTocCurrentId] = createSignal<string>();
+    const [tocItems, setTocItems] = createSignal<TocItem[]>([]);
+    const [currentTocItem, setCurrentTocItem] = createSignal<TocItem>();
 
     const initializeToc = async () => {
         const items = [];
@@ -54,7 +56,7 @@ export function Reader() {
                 });
             }
         }
-        setToc(items);
+        setTocItems(items);
     };
 
     const calcCurrentTocItem = (location: Location) => {
@@ -62,7 +64,7 @@ export function Reader() {
         const path = book.canonical(location.start.href);
 
         let lastItemAbove = undefined;
-        for (const item of toc()) {
+        for (const item of tocItems()) {
             if (!book.canonical(item.href).startsWith(path)) {
                 continue;
             }
@@ -74,10 +76,10 @@ export function Reader() {
             lastItemAbove = item;
         }
 
-        setTocCurrentId(lastItemAbove?.id);
+        setCurrentTocItem(lastItemAbove);
     };
 
-    const renderTarget = (target: string) => {
+    const displaySection = (target: string) => {
         requestIdleCallback(() => {
             const rendition = book.rendition;
             if (!rendition) return;
@@ -88,46 +90,84 @@ export function Reader() {
     const attachEpubView = async (element: HTMLElement) => {
         const rendition = book.renderTo(element, {
             flow: 'scrolled-doc',
-            width: '100%',
+            width: 640,
             height: '100%',
+            overflow: 'hidden scroll',
+            view: IframeViewWithCSP,
         });
 
         await book.ready;
-        await initializeToc();
+
+        book.spine.hooks.content.register((document: Document) => {
+            // process document before it is rendered to iframe
+        });
 
         rendition.on('relocated', (location: Location) => {
             calcCurrentTocItem(location);
             history.replace(location.start.cfi);
             invoke('save_progress', {
-                id: BOOK_ID,
+                id: ELLISIA.book.id,
                 location: location.start.cfi
             });
         });
 
         rendition.hooks.content.register((contents: Contents) => {
+            // process document after it is rendered to iframe
+
             contents.on('linkClicked', (href: string) => {
                 const relative = book.path.relative(href);
                 history.push(relative);
 			});
 
-            contents.document.addEventListener('mouseup', (event) => {
+            contents.document.querySelectorAll('a.ellisia-prev').forEach((element) => {
+                element.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    rendition.prev();
+                });
+            });
+            contents.document.querySelectorAll('a.ellisia-next').forEach((element) => {
+                element.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    rendition.next();
+                });
+            });
+
+            contents.window.addEventListener('mouseup', (event) => {
                 // Mouse side buttons
-                switch (event.button) {
-                    case 3:
-                        history.back();
-                        break;
-                    case 4:
-                        history.forward();
-                        break;
+                if (event.button === 3 || event.button === 4) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                if (event.button === 3 && history.hasBack()) {
+                    history.back();
+                }
+                if (event.button === 4 && history.hasForward()) {
+                    history.forward();
                 }
             });
+
+            contents.document.addEventListener('contextmenu', (event) => event.preventDefault());
+
+            contents.document.body.classList.add('ellisia-loaded');
+
+            setTimeout(() => {
+                const walker = contents.document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+                let element;
+                while (element = walker.nextNode() as Element) {
+                    const style = window.getComputedStyle(element);
+                    if (style.fontStyle === 'italic') {
+                        element.classList.add('ellisia-emphasis');
+                    }
+                }
+            }, 20);
         });
 
-        const location = await invoke<any>('get_progress', { id: BOOK_ID });
-        history.reset([location]);
-        renderTarget(location);
+        // This will trigger `book.spine.hooks.content`, so it needs to be placed after that.
+        await initializeToc();
 
-        onCleanup(() => book?.destroy());
+        const location = await invoke<any>('get_progress', { id: ELLISIA.book.id });
+        history.reset([location]);
+        displaySection(location);
     };
 
     return (
@@ -136,8 +176,8 @@ export function Reader() {
 
             <div class="main">
                 <Navigation
-                    items={toc()}
-                    currentId={tocCurrentId()}
+                    items={tocItems()}
+                    current={currentTocItem()}
                     onNavigate={navigate}
                 />
 

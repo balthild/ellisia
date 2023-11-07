@@ -51,7 +51,7 @@ export function Library() {
                                 <img
                                     class="cover cover-thumbnail"
                                     classList={{ errored: erroredCover().includes(id) }}
-                                    src={`${RENDERER}/cover/${id}.png`}
+                                    src={`${ELLISIA.renderer}/cover/${id}.png`}
                                     onError={() => setErroredCover(xs => [...xs, id])}
                                 />
                                 <div class='cover cover-text' classList={{ errored: erroredCover().includes(id) }}>

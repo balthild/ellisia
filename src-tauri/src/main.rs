@@ -7,15 +7,16 @@
 
 use std::error::Error;
 use std::path::PathBuf;
-use std::{env, vec};
+use std::env;
 
 use anyhow::{Context, Result};
+use serde_json::json;
 use state::AppState;
 use tauri::api::dialog;
 use tauri::http::{Request, Response};
 use tauri::{App, AppHandle, Manager, WindowBuilder, WindowUrl, Wry};
 use typed_path::Utf8NativePathBuf;
-use utils::{get_config_dir_path, init_dir};
+use utils::{get_config_dir_path, init_dir, clean_path};
 
 pub mod commands;
 pub mod epub;
@@ -111,12 +112,9 @@ fn launch_library(app: AppHandle) -> Result<()> {
         None => {
             let url = WindowUrl::App("index.html".into());
 
-            let script = format!(
-                "
-                const BOOK_ID = '';
-                const RENDERER = 'http://127.0.0.1:{port}';
-                "
-            );
+            let script = format!("const ELLISIA = {};", json!({
+                "renderer": format!("http://127.0.0.1:{port}"),
+            }));
 
             let window = WindowBuilder::new(&app, "library", url)
                 .title("Ellisia")
@@ -139,7 +137,7 @@ fn launch_library(app: AppHandle) -> Result<()> {
 /// `path` must be canonicalized before calling this function.
 fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
     let state = app.state::<AppState>();
-    let id = state.open_book(path)?;
+    let id = state.open_book(path.clone())?;
     let port = state.renderer_port();
 
     match app.get_window(&id) {
@@ -155,12 +153,15 @@ fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
             let origin = "book://localhost";
             */
 
-            let script = format!(
-                "
-                const BOOK_ID = '{id}';
-                const RENDERER = 'http://127.0.0.1:{port}';
-                "
-            );
+            clean_path(&path);
+
+            let script = format!("const ELLISIA = {};", json!({
+                "book": {
+                    "id": id,
+                    "path": path.as_str(),
+                },
+                "renderer": format!("http://127.0.0.1:{port}"),
+            }));
 
             let window = WindowBuilder::new(&app, id, url)
                 .title("Ellisia")
@@ -169,6 +170,8 @@ fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
                 .center()
                 .focused(true)
                 .initialization_script(&script)
+                // .on_navigation(|_| false)
+                // .on_web_resource_request(|request, response| {})
                 .build()
                 .context("Failed to create reader window")?;
 
