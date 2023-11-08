@@ -1,7 +1,10 @@
 import './Library.scss';
 
-import { invoke } from '@tauri-apps/api';
+import { dialog, invoke } from '@tauri-apps/api';
 import { createResource, createSignal, For, onCleanup } from 'solid-js';
+
+import { Toolbar } from './components/Toolbar';
+import { ToolbarIcon } from './components/ToolbarIcon';
 
 export function Library() {
     const [library, { refetch }] = createResource(() => invoke<EllisiaLibrary>('get_library'));
@@ -35,7 +38,7 @@ export function Library() {
             // NaN always goes to the end
             const timeA = b.last_read_at?.getTime() ?? NaN;
             const timeB = a.last_read_at?.getTime() ?? NaN;
-            return timeB - timeA;
+            return timeA - timeB;
         });
 
         return books;
@@ -45,7 +48,22 @@ export function Library() {
 
     const [erroredCover, setErroredCover] = createSignal<string[]>([]);
 
-    const openBook = async (book: any) => {
+    const addBook = async () => {
+        const path = await dialog.open({
+            filters: [{ name: 'Epub', extensions: ['epub'] }],
+        });
+        if (!path) {
+            return;
+        }
+
+        console.log(path);
+        const result = await invoke<boolean>('open_book', { path });
+        if (result) {
+            refetch();
+        }
+    };
+
+    const openBook = async (book: EllisiaLibraryBook) => {
         const result = await invoke<boolean>('open_book', { path: book.path });
         if (result) {
             await invoke<boolean>('close_library');
@@ -54,6 +72,15 @@ export function Library() {
 
     return (
         <div id="library">
+            <Toolbar size="large">
+                <ToolbarIcon
+                    bordered
+                    onClick={addBook}
+                    icon="folder-open-line"
+                    label="Open"
+                />
+            </Toolbar>
+
             <table class="books">
                 <thead>
                     <tr>

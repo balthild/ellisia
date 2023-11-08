@@ -16,6 +16,7 @@
 body {
     margin: 0 auto !important;
     padding: 0 !important;
+    background: none !important;
     max-width: var(--text-width) !important;
 }
 

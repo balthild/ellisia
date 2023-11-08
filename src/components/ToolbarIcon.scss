@@ -1,0 +1,66 @@
+.toolbar .btn {
+    height: 1.8rem;
+    padding: 0 0.5rem 0 0.45rem;
+    border: none;
+    outline: none;
+    border-radius: 3px;
+    background: transparent;
+    transition: background-color 0.1s ease, color 0.1s ease;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #555555;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1rem;
+
+    &:disabled {
+        color: #bbbbbb;
+    }
+
+    &:not(:disabled) {
+        cursor: pointer;
+    }
+
+    &:not(:disabled):hover {
+        background: #e8e8e8;
+    }
+
+    &:not(:disabled):active {
+        background: #d0d0d0;
+    }
+
+    &.bordered {
+        border: 1px solid rgb(0 0 0 / 10%);
+    }
+
+    &.square {
+        padding: 0;
+        overflow: hidden;
+        width: 1.8rem;
+        text-align: center;
+    }
+
+    .icon {
+        font-size: 1.25rem;
+
+        &::before, &::after {
+            vertical-align: middle;
+        }
+    }
+
+    .label {
+        transform: translateY(-0.04em);
+    }
+
+    .icon + .label {
+        margin-left: 0.35rem;
+    }
+}
+
+.toolbar.large .btn {
+    height: 2.4rem;
+    padding: 0 0.8rem 0 0.75rem;
+}

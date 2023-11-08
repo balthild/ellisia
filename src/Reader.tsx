@@ -10,16 +10,28 @@ import CSP from './assets/csp.txt?raw';
 import HEAD_END from './assets/head-end.html?raw';
 import { Navigation, TocItem } from './components/Navigation';
 import { Toolbar } from './components/Toolbar';
+import { ToolbarIcon } from './components/ToolbarIcon';
 import { IframeViewWithCSP } from './epubjs/IframeViewWithCSP';
 import { AbstractHistory } from './history';
 
 export function Reader() {
+    const openLibrary = async () => {
+        const result = await invoke<boolean>('open_library');
+        // TODO: close book?
+    };
+
+    const [hasBack, setHasBack] = createSignal(false);
+    const [hasForward, setHasForward] = createSignal(false);
+
     let history = new AbstractHistory({ initialStates: [''] });
     history.listen((update) => {
         // Auto sync only for back/forward. Ignore push/replace.
         if (update.action === 'POP') {
             displaySection(update.location.state);
         }
+
+        setHasBack(history.hasBack());
+        setHasForward(history.hasForward());
     });
 
     const navigate = (state: string) => {
@@ -192,7 +204,24 @@ export function Reader() {
 
     return (
         <div id="reader" class="full-size">
-            <Toolbar history={history} />
+            <Toolbar>
+                <ToolbarIcon icon="list-check-2" />
+                <ToolbarIcon
+                    disabled={!hasBack()}
+                    onClick={() => history.back()}
+                    icon="arrow-left-line"
+                />
+                <ToolbarIcon
+                    disabled={!hasForward()}
+                    onClick={() => history.forward()}
+                    icon="arrow-right-line"
+                />
+                <div class="sep" />
+                <ToolbarIcon icon="database-line" onClick={openLibrary} />
+                <div class="flex-spacer" />
+                <ToolbarIcon icon="font-size" />
+                <ToolbarIcon icon="information-line" />
+            </Toolbar>
 
             <div class="main">
                 <Navigation items={tocItems()} current={currentTocItem()} onNavigate={navigate} />

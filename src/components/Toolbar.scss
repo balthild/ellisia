@@ -15,43 +15,12 @@
         margin: 0 0.4rem;
         background: #bbbbbb;
     }
-
-    .btn {
-        padding: 0;
-        border: none;
-        outline: none;
-        border-radius: 3px;
-
-        color: #555555;
-        background: transparent;
-        transition: background-color 0.1s ease, color 0.1s ease;
-
-        font-size: 1.25rem;
-        overflow: hidden;
-        width: 1.8rem;
-        height: 1.8rem;
-        line-height: 1.8rem;
-        text-align: center;
-
-        &:disabled {
-            color: #bbbbbb;
-        }
-
-        &:not(:disabled) {
-            cursor: pointer;
-        }
-
-        &:not(:disabled):hover {
-            background: #e8e8e8;
-        }
-
-        &:not(:disabled):active {
-            background: #d0d0d0;
-        }
-    }
 }
 
-.main {
-    display: flex;
-    align-items: stretch;
+.toolbar.large {
+    padding: 0.8rem 1.2rem;
+
+    .sep {
+        height: 1.8rem;
+    }
 }
