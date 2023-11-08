@@ -11,7 +11,8 @@ edition = "2021"
 tauri-build = { version = "1.4", features = ["config-toml"] }
 
 [dependencies]
-tauri = { version = "1.4", features = [ "dialog-all", "dialog"] }
+tauri = { version = "1.4", features = [ "window-start-dragging", "window-set-title", "dialog-all", "dialog"] }
+tauri-plugin-single-instance = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 quick-xml = { version = "0.30.0", features = ["serialize", "overlapped-lists"] }
@@ -30,6 +31,7 @@ num_cpus = "1.16.0"
 parking_lot = "0.12.1"
 image = "0.24.7"
 humantime-serde = "1.1.1"
+crossbeam-channel = "0.5.8"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

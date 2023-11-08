@@ -12,6 +12,7 @@ version = "0.0.0"
 [tauri.allowlist]
 all = false
 dialog = { all = true }
+window = { setTitle = true, startDragging = true }
 
 [tauri.bundle]
 active = true

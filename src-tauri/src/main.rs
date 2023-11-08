@@ -14,7 +14,7 @@ use serde_json::json;
 use state::AppState;
 use tauri::api::dialog;
 use tauri::http::{Request, Response};
-use tauri::{App, AppHandle, Manager, WindowBuilder, WindowUrl, Wry};
+use tauri::{App, AppHandle, Manager, WindowBuilder, WindowEvent, WindowUrl, Wry};
 use typed_path::Utf8NativePathBuf;
 use utils::{get_config_dir_path, init_dir};
 
@@ -25,6 +25,7 @@ pub mod library;
 pub mod renderer;
 pub mod state;
 pub mod utils;
+pub mod zip;
 
 fn main() {
     tauri::Builder::default()
@@ -117,7 +118,7 @@ fn launch_library(app: AppHandle) -> Result<()> {
             });
 
             let window = WindowBuilder::new(&app, "library", url)
-                .title("Ellisia")
+                .title("Library - Ellisia")
                 .min_inner_size(900.0, 800.0)
                 .inner_size(1200.0, 900.0)
                 .center()
@@ -137,8 +138,8 @@ fn launch_library(app: AppHandle) -> Result<()> {
 /// `path` must be canonicalized before calling this function.
 fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
     let state = app.state::<AppState>();
-    let id = state.open_book(path.clone())?;
     let port = state.renderer_port();
+    let (id, book) = state.open_book(path.clone())?;
 
     match app.get_window(&id) {
         Some(window) => window.set_focus().context("Failed to focus reader window"),
@@ -153,6 +154,14 @@ fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
             let origin = "book://localhost";
             */
 
+            let title = match book.metadata.title {
+                Some(title) => format!("{} - Ellisia", title),
+                None => match path.file_stem() {
+                    Some(stem) => format!("{} - Ellisia", stem),
+                    None => "Ellisia".into(),
+                },
+            };
+
             let config = json!({
                 "book": {
                     "id": id,
@@ -161,8 +170,8 @@ fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
                 "renderer": format!("http://127.0.0.1:{port}"),
             });
 
-            let window = WindowBuilder::new(&app, id, url)
-                .title("Ellisia")
+            let window = WindowBuilder::new(&app, id.clone(), url)
+                .title(title)
                 .min_inner_size(900.0, 800.0)
                 .inner_size(1200.0, 900.0)
                 .center()
@@ -172,6 +181,13 @@ fn launch_book(app: AppHandle, path: Utf8NativePathBuf) -> Result<()> {
                 // .on_web_resource_request(|request, response| {})
                 .build()
                 .context("Failed to create reader window")?;
+
+            window.on_window_event(move |event| {
+                if let WindowEvent::Destroyed = event {
+                    let state = app.state::<AppState>();
+                    state.close_book(&id);
+                }
+            });
 
             #[cfg(any(debug_assertions, feature = "devtools"))]
             window.open_devtools();

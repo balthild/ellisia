@@ -78,7 +78,8 @@ fn handle_book_request(app: AppHandle, path: &str) -> Result<BytesResponse> {
     };
 
     let state = app.state::<AppState>();
-    let mut epub = state.epubs().get_mut(id).context("Book not opened")?;
+    let mut epubs = state.epubs().write();
+    let epub = epubs.get_mut(id).context("Book not opened")?;
 
     let content = match epub.read_file(path) {
         Ok(content) => content,

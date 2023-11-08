@@ -12,7 +12,7 @@ use crate::error::CommandError;
 use crate::library::{Book, BookMetadata};
 use crate::state::AppState;
 
-/// This handler creating new windows needs to be `async` to avoid deadlocks.
+/// The handlers creating new windows need to be `async` to avoid deadlocks.
 /// See https://tauri.app/v1/guides/features/multiwindow/#create-a-window-using-an-apphandle-instance
 /// See https://github.com/tauri-apps/wry/issues/583
 #[tauri::command]
@@ -53,7 +53,8 @@ pub fn get_library(app: AppHandle) -> Result<impl Serialize, CommandError> {
 #[tauri::command]
 pub fn get_toc(app: AppHandle, id: &str) -> Result<EpubToc, CommandError> {
     let state = app.state::<AppState>();
-    let epub = state.epubs().get(id).context("Book not opened")?;
+    let epubs = state.epubs().read();
+    let epub = epubs.get(id).context("Book not opened")?;
     let toc = epub.toc().clone();
     Ok(toc)
 }
@@ -61,7 +62,8 @@ pub fn get_toc(app: AppHandle, id: &str) -> Result<EpubToc, CommandError> {
 #[tauri::command]
 pub fn get_rootfile(app: AppHandle, id: &str) -> Result<EpubRootfile, CommandError> {
     let state = app.state::<AppState>();
-    let epub = state.epubs().get(id).context("Book not opened")?;
+    let epubs = state.epubs().read();
+    let epub = epubs.get(id).context("Book not opened")?;
     let rootfile = epub.rootfile().clone();
     Ok(rootfile)
 }
@@ -85,17 +87,18 @@ pub fn save_progress(app: AppHandle, id: &str, location: &str) -> Result<(), Com
             book.last_read_at = SystemTime::now();
         }
         None => {
-            // Should not happen, but anyway we just create it.
-            let epub = state.epubs().get(id).context("Book not opened")?;
-            library.books_mut().insert(
-                id.to_string(),
-                Book {
-                    path: epub.path().to_string(),
-                    location: Some(location.to_string()),
-                    last_read_at: SystemTime::now(),
-                    metadata: BookMetadata::new(&epub),
-                },
-            );
+            // May happen when user removed book with the reader window opening.
+            if let Some(epub) = state.epubs().read().get(id) {
+                library.books_mut().insert(
+                    id.to_string(),
+                    Book {
+                        path: epub.path().to_string(),
+                        location: Some(location.to_string()),
+                        last_read_at: SystemTime::now(),
+                        metadata: BookMetadata::new(epub),
+                    },
+                );
+            }
         }
     }
 
