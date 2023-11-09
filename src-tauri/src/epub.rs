@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::io::Cursor;
+use std::io::BufReader;
 
 use anyhow::{bail, Context, Result};
 use serde::de::DeserializeOwned;
 use typed_path::{Utf8NativePath, Utf8NativePathBuf};
 
-use crate::zip::ZipPool;
+use crate::zip::SharedZip;
 
 use self::container::EpubContainer;
 use self::rootfile::EpubRootfile;
@@ -18,7 +18,7 @@ pub mod toc;
 #[derive(Debug)]
 pub struct EpubFile {
     path: Utf8NativePathBuf,
-    zip: ZipPool,
+    zip: SharedZip,
     container: EpubContainer,
     rootfile: EpubRootfile,
     toc: EpubToc,
@@ -27,7 +27,7 @@ pub struct EpubFile {
 
 impl EpubFile {
     pub fn open(path: Utf8NativePathBuf) -> Result<Self> {
-        let zip = ZipPool::open(path.as_str())?;
+        let zip = SharedZip::open(path.as_str())?;
 
         let container = read_container(&zip).context("Invalid EPUB file")?;
         let rootfile = read_rootfile(&zip, &container).context("Invalid EPUB file")?;
@@ -80,24 +80,22 @@ impl EpubFile {
     }
 }
 
-pub fn read_xml<T: DeserializeOwned>(zip: &ZipPool, path: &str) -> Result<T> {
-    let data = zip.read(path)?;
-    let reader = Cursor::new(data);
-
+pub fn read_xml<T: DeserializeOwned>(zip: &SharedZip, path: &str) -> Result<T> {
+    let reader = BufReader::new(zip.by_name(path)?);
     quick_xml::de::from_reader(reader).with_context(|| format!("failed to parse {path}"))
 }
 
-fn read_container(zip: &ZipPool) -> Result<EpubContainer> {
+fn read_container(zip: &SharedZip) -> Result<EpubContainer> {
     read_xml(zip, "META-INF/container.xml")
 }
 
-fn read_rootfile(zip: &ZipPool, container: &EpubContainer) -> Result<EpubRootfile> {
+fn read_rootfile(zip: &SharedZip, container: &EpubContainer) -> Result<EpubRootfile> {
     let path = container.rootfiles.children[0].full_path.clone();
     let package = read_xml(zip, &path)?;
     Ok(EpubRootfile::new(path, package))
 }
 
-fn read_toc_ncx(zip: &ZipPool, rootfile: &EpubRootfile) -> Result<EpubToc> {
+fn read_toc_ncx(zip: &SharedZip, rootfile: &EpubRootfile) -> Result<EpubToc> {
     let href = &rootfile
         .package
         .manifest

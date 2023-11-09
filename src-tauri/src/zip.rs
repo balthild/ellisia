@@ -1,53 +1,78 @@
+use std::error::Error;
+use std::fmt::{Debug, Display};
 use std::fs::File;
-use std::io::Read;
+use std::io::{Error as IoError, ErrorKind as IoErrorKind, Read};
 
 use anyhow::{Context, Result};
-use crossbeam_channel::{Receiver, RecvError, SendError, Sender};
-use zip::ZipArchive;
+use positioned_io::{Cursor, RandomAccessFile};
+use rc_zip::reader::sync::EntryReader;
+use rc_zip::reader::{ArchiveReader, ArchiveReaderResult};
+use rc_zip::Archive;
 
-#[derive(Debug, Clone)]
-pub struct ZipPool {
-    push: Sender<ZipArchive<File>>,
-    pull: Receiver<ZipArchive<File>>,
+#[derive(Debug)]
+pub struct EntryNotFound;
+
+impl Display for EntryNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Entry not found in the zip archive")
+    }
 }
 
-impl ZipPool {
+impl Error for EntryNotFound {}
+
+pub struct SharedZip {
+    file: RandomAccessFile,
+    archive: Archive,
+}
+
+impl SharedZip {
     pub fn open(path: &str) -> Result<Self> {
-        let cap = num_cpus::get();
-        let (push, pull) = crossbeam_channel::bounded(cap);
+        let file = File::open(path).with_context(|| format!("Failed to open file: {path}"))?;
+        let size = file.metadata()?.len();
 
-        for _ in 0..cap {
-            let file = File::open(path).context(format!("Failed to open file: {path}"))?;
-            let zip = ZipArchive::new(file).context("Failed to read zip archive")?;
-            push.send(zip)?;
+        let file = RandomAccessFile::try_new(file)?;
+
+        // Copied and modified from the `rc-zip` crate.
+        let mut reader = ArchiveReader::new(size);
+        loop {
+            if let Some(offset) = reader.wants_read() {
+                let mut cursor = Cursor::new_pos(&file, offset);
+                match reader.read(&mut cursor) {
+                    Ok(read_bytes) => {
+                        if read_bytes == 0 {
+                            return Err(IoError::from(IoErrorKind::UnexpectedEof))
+                                .context("Failed to read zip file");
+                        }
+                    }
+                    Err(err) => return Err(err).context("Failed to read zip file"),
+                }
+            }
+
+            match reader.process()? {
+                ArchiveReaderResult::Continue => {}
+                ArchiveReaderResult::Done(archive) => {
+                    return Ok(Self { file, archive });
+                }
+            }
         }
+    }
 
-        Ok(Self { push, pull })
+    pub fn by_name(&self, path: &str) -> Result<EntryReader<'_, Cursor<&RandomAccessFile>>> {
+        let entry = self.archive.by_name(path).ok_or(EntryNotFound)?;
+        let reader = EntryReader::new(entry, |offset| Cursor::new_pos(&self.file, offset));
+        Ok(reader)
     }
 
     pub fn read(&self, path: &str) -> Result<Vec<u8>> {
-        let mut zip = self.pull()?;
-        let result = read_bytes(&mut zip, path);
-        self.push(zip)?;
-        result
-    }
-
-    fn pull(&self) -> Result<ZipArchive<File>, RecvError> {
-        self.pull.recv()
-    }
-
-    fn push(&self, zip: ZipArchive<File>) -> Result<(), SendError<ZipArchive<File>>> {
-        self.push.send(zip)
+        let mut reader = self.by_name(path)?;
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf)?;
+        Ok(buf)
     }
 }
 
-pub fn read_bytes(zip: &mut ZipArchive<File>, path: &str) -> Result<Vec<u8>> {
-    match zip.by_name(path) {
-        Ok(mut file) => {
-            let mut bytes = Vec::with_capacity(file.size() as usize);
-            file.read_to_end(&mut bytes)?;
-            Ok(bytes)
-        }
-        Err(e) => Err(e).with_context(|| format!("failed to read {path}")),
+impl Debug for SharedZip {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConcurrentZip").finish()
     }
 }

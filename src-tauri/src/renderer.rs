@@ -9,11 +9,11 @@ use regex::Regex;
 use tauri::{AppHandle, Manager};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 use typed_path::Utf8NativePathBuf;
-use zip::result::ZipError;
 
 use crate::epub::EpubFile;
 use crate::state::AppState;
 use crate::utils::get_config_dir_path;
+use crate::zip::EntryNotFound;
 
 type BytesResponse = Response<Cursor<Vec<u8>>>;
 
@@ -83,8 +83,8 @@ fn handle_book_request(app: AppHandle, path: &str) -> Result<BytesResponse> {
 
     let content = match epub.read_file(path) {
         Ok(content) => content,
-        Err(e) => match e.root_cause().downcast_ref::<ZipError>() {
-            Some(ZipError::FileNotFound) => {
+        Err(e) => match e.root_cause().downcast_ref::<EntryNotFound>() {
+            Some(EntryNotFound) => {
                 let response = make_response(404, format!("File not found: {path}"));
                 return Ok(response);
             }
