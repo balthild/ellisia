@@ -7,6 +7,7 @@
 
 use std::env;
 use std::error::Error;
+use std::ffi::OsString;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
@@ -36,6 +37,12 @@ fn main() {
             }
             Ok(())
         })
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            println!("{}, {argv:?}, {cwd}", app.package_info().name);
+            let argv = argv.into_iter().map(OsString::from).collect();
+            let cwd = PathBuf::from(cwd);
+            launch(app.clone(), argv, cwd);
+        }))
         .register_uri_scheme_protocol("book", book_protocol)
         .invoke_handler(tauri::generate_handler![
             commands::open_book,
@@ -61,47 +68,51 @@ fn app_setup(app: &mut App) -> Result<()> {
     app.manage(state);
 
     let handle = app.handle();
-    std::thread::spawn(move || {
-        let args = env::args_os().skip(1);
-        if args.len() == 0 {
-            if let Err(e) = launch_library(handle) {
-                let message = format!("{:?}", e);
-                dialog::message::<Wry>(None, "Error", message);
-            }
-            return;
-        }
-
-        for arg in args {
-            let path = match PathBuf::from(arg).canonicalize() {
-                Ok(path) => path,
-                Err(e) => {
-                    let message = format!("Failed to resolve path:\n{}", e);
-                    dialog::message::<Wry>(None, "Error", message);
-                    continue;
-                }
-            };
-
-            let path = match path.into_os_string().into_string() {
-                Ok(path) => Utf8NativePathBuf::from(path),
-                Err(path) => {
-                    let message = format!("Invalid path:\n{}", path.to_string_lossy());
-                    dialog::message::<Wry>(None, "Error", message);
-                    continue;
-                }
-            };
-
-            if let Err(e) = launch_book(handle.clone(), path) {
-                let message = format!("{:?}", e);
-                dialog::message::<Wry>(None, "Error", message);
-            }
-        }
-    });
+    let args = env::args_os().collect();
+    let cwd = std::env::current_dir().unwrap_or_default();
+    launch(handle, args, cwd);
 
     Ok(())
 }
 
 fn book_protocol(_app: &AppHandle, _req: &Request) -> Result<Response, Box<dyn Error>> {
     unimplemented!()
+}
+
+fn launch(app: AppHandle, args: Vec<OsString>, cwd: PathBuf) {
+    let args = args.into_iter().skip(1);
+    if args.len() == 0 {
+        if let Err(e) = launch_library(app) {
+            let message = format!("{:?}", e);
+            dialog::message::<Wry>(None, "Error", message);
+        }
+        return;
+    }
+
+    for arg in args {
+        let path = match cwd.join(arg).canonicalize() {
+            Ok(path) => path,
+            Err(e) => {
+                let message = format!("Failed to resolve path:\n{}", e);
+                dialog::message::<Wry>(None, "Error", message);
+                continue;
+            }
+        };
+
+        let path = match path.into_os_string().into_string() {
+            Ok(path) => Utf8NativePathBuf::from(path),
+            Err(path) => {
+                let message = format!("Invalid path:\n{}", path.to_string_lossy());
+                dialog::message::<Wry>(None, "Error", message);
+                continue;
+            }
+        };
+
+        if let Err(e) = launch_book(app.clone(), path) {
+            let message = format!("{:?}", e);
+            dialog::message::<Wry>(None, "Error", message);
+        }
+    }
 }
 
 fn launch_library(app: AppHandle) -> Result<()> {

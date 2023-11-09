@@ -16,11 +16,9 @@ impl EpubRootfile {
 
     pub fn resolve_href(&self, href: &str) -> String {
         let mut path = Utf8UnixPathBuf::from(&self.path);
-
-        // Like the web, `base` always represents a file, so we need to remove the file name
+        // `self.path` is the rootfile. Remove the filename to get the base dir.
         path.pop();
         path.push(href);
-
         clean_path_unix(&path).to_string()
     }
 
