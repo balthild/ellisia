@@ -1,9 +1,9 @@
 use std::error::Error;
 use std::fmt::{Debug, Display};
 use std::fs::File;
-use std::io::{Error as IoError, ErrorKind as IoErrorKind, Read};
+use std::io::Read;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use positioned_io::{Cursor, RandomAccessFile};
 use rc_zip::reader::sync::EntryReader;
 use rc_zip::reader::{ArchiveReader, ArchiveReaderResult};
@@ -40,19 +40,17 @@ impl SharedZip {
                 match reader.read(&mut cursor) {
                     Ok(read_bytes) => {
                         if read_bytes == 0 {
-                            return Err(IoError::from(IoErrorKind::UnexpectedEof))
-                                .context("Failed to read zip file");
+                            bail!("Unexpected EOF when processing zip file: {path}");
                         }
                     }
-                    Err(err) => return Err(err).context("Failed to read zip file"),
+                    Err(e) => return Err(e).context(format!("Failed to read zip file: {path}")),
                 }
             }
 
-            match reader.process()? {
-                ArchiveReaderResult::Continue => {}
-                ArchiveReaderResult::Done(archive) => {
-                    return Ok(Self { file, archive });
-                }
+            match reader.process() {
+                Ok(ArchiveReaderResult::Continue) => {},
+                Ok(ArchiveReaderResult::Done(archive)) => return Ok(Self { file, archive }),
+                Err(e) => return Err(e).context(format!("Invalid zip file: {path}")),
             }
         }
     }
@@ -73,6 +71,6 @@ impl SharedZip {
 
 impl Debug for SharedZip {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ConcurrentZip").finish()
+        f.debug_struct("SharedZip").finish()
     }
 }

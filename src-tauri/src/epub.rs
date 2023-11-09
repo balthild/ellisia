@@ -82,7 +82,7 @@ impl EpubFile {
 
 pub fn read_xml<T: DeserializeOwned>(zip: &SharedZip, path: &str) -> Result<T> {
     let reader = BufReader::new(zip.by_name(path)?);
-    quick_xml::de::from_reader(reader).with_context(|| format!("failed to parse {path}"))
+    quick_xml::de::from_reader(reader).with_context(|| format!("Failed to parse {path} as XML"))
 }
 
 fn read_container(zip: &SharedZip) -> Result<EpubContainer> {
