@@ -4,70 +4,69 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    overflow: auto;
 
     .books {
-        max-width: 80rem;
-        margin: 3rem;
-        border-spacing: 0;
+        padding: 2rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
+        grid-gap: 2rem;
         user-select: none;
+        overflow-y: auto;
 
-        th, td {
-            text-align: left;
-            padding: 0.6rem 0.8rem 0.7rem;
-            border-bottom: 1px solid #d0d0d0;
+        .span-cols {
+            grid-column: 1 / -1;
         }
 
-        th {
-            color: #444444;
-            border-bottom-width: 2px;
-        }
-
-        tbody tr {
+        .book {
+            display: flex;
+            padding: 1rem;
             cursor: pointer;
-            transition: background-color 0.1s ease;
+            position: relative;
 
-            &.selected {
-                background: #e8e8e8;
+            &::before {
+                content: '';
+                display: block;
+                box-sizing: border-box;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                background: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 3px;
+                transition: box-shadow 0.1s ease, border-color 0.1s ease;
             }
 
-            &:hover {
-                background: #e0e0e0;
-            }
-
-            &:active {
-                background: #d8d8d8;
+            &.selected::before {
+                border-color: #456990;
+                border-width: 2px;
+                box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
             }
         }
 
         .cover {
-            width: 48px;
-            height: 72px;
+            width: 6rem;
+            height: 9rem;
             border: 1px solid rgb(0 0 0 / 12%);
             border-radius: 3px;
             overflow: hidden;
-        }
+            flex-shrink: 0;
+            margin-right: 1rem;
 
-        .cover-thumbnail {
-            display: block;
-
-            &.errored {
-                display: none;
+            &.cover-thumbnail {
+                display: block;
             }
-        }
 
-        .cover-text {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            text-transform: uppercase;
-            background: #5981a6;
-            color: #ffffff;
-            font-weight: 600;
-            font-size: 1.2rem;
-
-            &.errored {
-                display: flex;
+            &.cover-text {
+                text-transform: uppercase;
+                background: #5981a6;
+                color: #ffffff;
+                font-weight: 500;
+                font-size: 2.5rem;
+                text-align: center;
+                line-height: 8.8rem;
             }
         }
 
@@ -83,7 +82,7 @@
             margin: 0.1rem 0 0;
         }
 
-        .nowrap {
+        .last-read {
             white-space: nowrap;
         }
     }
