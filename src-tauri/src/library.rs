@@ -81,7 +81,7 @@ impl BookMetadata {
                 .title
                 .first()
                 .cloned()
-                .or_else(|| epub.path().file_name().map(str::to_owned)),
+                .or_else(|| epub.path().file_stem().map(str::to_owned)),
             author: epub.rootfile().package.metadata.creator.first().cloned(),
         }
     }

@@ -7,18 +7,27 @@ use anyhow::{bail, Context, Result};
 use positioned_io::{Cursor, RandomAccessFile};
 use rc_zip::reader::sync::EntryReader;
 use rc_zip::reader::{ArchiveReader, ArchiveReaderResult};
-use rc_zip::Archive;
+use rc_zip::{Archive, EntryContents, StoredEntry};
+use typed_path::Utf8UnixPathBuf;
+
+use crate::path::Utf8PathExtClean;
 
 #[derive(Debug)]
-pub struct EntryNotFound;
+pub enum ZipError {
+    EntryNotFound,
+    EntryIsNotFile,
+}
 
-impl Display for EntryNotFound {
+impl Display for ZipError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Entry not found in the zip archive")
+        match self {
+            ZipError::EntryNotFound => f.write_str("The zip entry not found"),
+            ZipError::EntryIsNotFile => f.write_str("Te zip entry is not a file"),
+        }
     }
 }
 
-impl Error for EntryNotFound {}
+impl Error for ZipError {}
 
 pub struct SharedZip {
     file: RandomAccessFile,
@@ -48,29 +57,71 @@ impl SharedZip {
             }
 
             match reader.process() {
-                Ok(ArchiveReaderResult::Continue) => {},
+                Ok(ArchiveReaderResult::Continue) => continue,
                 Ok(ArchiveReaderResult::Done(archive)) => return Ok(Self { file, archive }),
                 Err(e) => return Err(e).context(format!("Invalid zip file: {path}")),
             }
         }
     }
 
-    pub fn by_name(&self, path: &str) -> Result<EntryReader<'_, Cursor<&RandomAccessFile>>> {
-        let entry = self.archive.by_name(path).ok_or(EntryNotFound)?;
-        let reader = EntryReader::new(entry, |offset| Cursor::new_pos(&self.file, offset));
-        Ok(reader)
-    }
+    pub fn entry(&self, path: &str) -> Result<SharedZipEntry, ZipError> {
+        let path = Utf8UnixPathBuf::from(dbg!(path))
+            .clean()
+            .components()
+            .skip_while(|component| {
+                use typed_path::Utf8UnixComponent::*;
+                matches!(component, ParentDir | CurDir | RootDir)
+            })
+            .collect::<Utf8UnixPathBuf>();
 
-    pub fn read(&self, path: &str) -> Result<Vec<u8>> {
-        let mut reader = self.by_name(path)?;
-        let mut buf = Vec::new();
-        reader.read_to_end(&mut buf)?;
-        Ok(buf)
+        let mut candidate = None;
+        for entry in self.archive.entries() {
+            if entry.name() == path {
+                candidate = Some(SharedZipEntry::new(&self.file, entry));
+                break;
+            }
+
+            if candidate.is_none() {
+                let normalized = Utf8UnixPathBuf::from(entry.name()).clean();
+                if normalized == path {
+                    candidate = Some(SharedZipEntry::new(&self.file, entry));
+                }
+            }
+        }
+
+        match candidate {
+            Some(entry) => match entry.entry.contents() {
+                EntryContents::File => Ok(entry),
+                _ => Err(ZipError::EntryIsNotFile),
+            },
+            None => Err(ZipError::EntryNotFound),
+        }
     }
 }
 
 impl Debug for SharedZip {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SharedZip").finish()
+    }
+}
+
+pub struct SharedZipEntry<'a> {
+    file: &'a RandomAccessFile,
+    entry: &'a StoredEntry,
+}
+
+impl<'a> SharedZipEntry<'a> {
+    fn new(file: &'a RandomAccessFile, entry: &'a StoredEntry) -> Self {
+        Self { file, entry }
+    }
+
+    pub fn reader(&self) -> EntryReader<'_, Cursor<&RandomAccessFile>> {
+        EntryReader::new(self.entry, |offset| Cursor::new_pos(self.file, offset))
+    }
+
+    pub fn bytes(&self) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
+        self.reader().read_to_end(&mut buf)?;
+        Ok(buf)
     }
 }

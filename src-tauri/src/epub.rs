@@ -29,6 +29,11 @@ impl EpubFile {
     pub fn open(path: Utf8NativePathBuf) -> Result<Self> {
         let zip = SharedZip::open(path.as_str())?;
 
+        let mimetype = zip.entry("mimetype")?.bytes()?;
+        if mimetype != b"application/epub+zip" {
+            bail!("Not an EPUB file");
+        }
+
         let container = read_container(&zip).context("Invalid EPUB file")?;
         let rootfile = read_rootfile(&zip, &container).context("Invalid EPUB file")?;
 
@@ -75,13 +80,14 @@ impl EpubFile {
         self.media_types.get(path).map(String::as_str)
     }
 
-    pub fn read_file(&mut self, path: &str) -> Result<Vec<u8>> {
-        self.zip.read(path)
+    pub fn read_file(&self, path: &str) -> Result<Vec<u8>> {
+        self.zip.entry(path)?.bytes()
     }
 }
 
 pub fn read_xml<T: DeserializeOwned>(zip: &SharedZip, path: &str) -> Result<T> {
-    let reader = BufReader::new(zip.by_name(path)?);
+    let entry = zip.entry(path)?;
+    let reader = BufReader::new(entry.reader());
     quick_xml::de::from_reader(reader).with_context(|| format!("Failed to parse {path} as XML"))
 }
 

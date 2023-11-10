@@ -2,10 +2,6 @@ use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use typed_path::{
-    Utf8NativePath, Utf8NativePathBuf, Utf8UnixPath, Utf8UnixPathBuf, Utf8WindowsPath,
-    Utf8WindowsPathBuf,
-};
 
 #[cfg(windows)]
 pub fn path_to_bytes(path: &Path) -> Cow<[u8]> {
@@ -42,65 +38,4 @@ pub fn init_dir(path: &Path) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn clean_path(path: &Utf8NativePath) -> Utf8NativePathBuf {
-    #[cfg(windows)]
-    return clean_path_windows(path);
-    #[cfg(unix)]
-    return clean_path_unix(path);
-}
-
-pub fn clean_path_windows(path: &Utf8WindowsPath) -> Utf8WindowsPathBuf {
-    let mut out = Vec::new();
-
-    for component in path.components() {
-        use typed_path::windows::Utf8WindowsComponent::*;
-        match component {
-            CurDir => (),
-            ParentDir => match out.last() {
-                Some(RootDir) => (),
-                Some(Normal(_)) => {
-                    out.pop();
-                }
-                Some(CurDir | ParentDir | Prefix(_)) | None => {
-                    out.push(component);
-                }
-            },
-            component => out.push(component),
-        }
-    }
-
-    if out.is_empty() {
-        Utf8WindowsPathBuf::from(".")
-    } else {
-        out.iter().collect()
-    }
-}
-
-pub fn clean_path_unix(path: &Utf8UnixPath) -> Utf8UnixPathBuf {
-    let mut out = Vec::new();
-
-    for component in path.components() {
-        use typed_path::unix::Utf8UnixComponent::*;
-        match component {
-            CurDir => (),
-            ParentDir => match out.last() {
-                Some(RootDir) => (),
-                Some(Normal(_)) => {
-                    out.pop();
-                }
-                Some(CurDir | ParentDir) | None => {
-                    out.push(component);
-                }
-            },
-            component => out.push(component),
-        }
-    }
-
-    if out.is_empty() {
-        Utf8UnixPathBuf::from(".")
-    } else {
-        out.iter().collect()
-    }
 }

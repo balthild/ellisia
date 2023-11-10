@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use typed_path::Utf8UnixPathBuf;
 
-use crate::utils::clean_path_unix;
+use crate::path::Utf8PathExtClean;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct EpubRootfile {
@@ -19,7 +19,7 @@ impl EpubRootfile {
         // `self.path` is the rootfile. Remove the filename to get the base dir.
         path.pop();
         path.push(href);
-        clean_path_unix(&path).to_string()
+        path.clean().to_string()
     }
 
     pub fn get_unique_id(&self) -> Option<String> {

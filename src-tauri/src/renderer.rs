@@ -13,7 +13,7 @@ use typed_path::Utf8NativePathBuf;
 use crate::epub::EpubFile;
 use crate::state::AppState;
 use crate::utils::get_config_dir_path;
-use crate::zip::EntryNotFound;
+use crate::zip::ZipError;
 
 type BytesResponse = Response<Cursor<Vec<u8>>>;
 
@@ -78,13 +78,13 @@ fn handle_book_request(app: AppHandle, path: &str) -> Result<BytesResponse> {
     };
 
     let state = app.state::<AppState>();
-    let mut epubs = state.epubs().write();
-    let epub = epubs.get_mut(id).context("Book not opened")?;
+    let epubs = state.epubs().read();
+    let epub = epubs.get(id).context("Book not opened")?;
 
     let content = match epub.read_file(path) {
         Ok(content) => content,
-        Err(e) => match e.root_cause().downcast_ref::<EntryNotFound>() {
-            Some(EntryNotFound) => {
+        Err(e) => match e.root_cause().downcast_ref::<ZipError>() {
+            Some(ZipError::EntryNotFound | ZipError::EntryIsNotFile) => {
                 let response = make_response(404, format!("File not found: {path}"));
                 return Ok(response);
             }
@@ -133,12 +133,12 @@ fn handle_thumbnail_request(app: AppHandle, path: &str) -> Result<BytesResponse>
     };
     drop(library);
 
-    let Ok(mut epub) = EpubFile::open(Utf8NativePathBuf::from(&book_path)) else {
+    let Ok(epub) = EpubFile::open(Utf8NativePathBuf::from(&book_path)) else {
         let response = make_response(500, format!("Failed to open epub: {book_path}"));
         return Ok(response);
     };
 
-    let thumbnail = match make_cover_thumbnail(&mut epub) {
+    let thumbnail = match make_cover_thumbnail(&epub) {
         Ok(thumbnail) => thumbnail,
         Err(e) => {
             let response = make_response(500, format!("Failed to get book cover: {id}\n{e}"));
@@ -190,7 +190,7 @@ fn make_response<T: Into<Vec<u8>>>(status: u16, body: T) -> BytesResponse {
         .with_header(Header::from_str("Access-Control-Allow-Origin: *").unwrap())
 }
 
-fn make_cover_thumbnail(epub: &mut EpubFile) -> Result<DynamicImage> {
+fn make_cover_thumbnail(epub: &EpubFile) -> Result<DynamicImage> {
     use image::imageops::FilterType;
     use image::io::Reader;
 

@@ -23,6 +23,7 @@ pub mod commands;
 pub mod epub;
 pub mod error;
 pub mod library;
+pub mod path;
 pub mod renderer;
 pub mod state;
 pub mod utils;
@@ -79,9 +80,9 @@ fn book_protocol(_app: &AppHandle, _req: &Request) -> Result<Response, Box<dyn E
     unimplemented!()
 }
 
-fn launch(app: AppHandle, args: Vec<OsString>, cwd: PathBuf) {
-    let args = args.into_iter().skip(1);
-    if args.len() == 0 {
+fn launch(app: AppHandle, argv: Vec<OsString>, cwd: PathBuf) {
+    let argv = argv.into_iter().skip(1);
+    if argv.len() == 0 {
         if let Err(e) = launch_library(app) {
             let message = format!("{:?}", e);
             dialog::message::<Wry>(None, "Error", message);
@@ -89,8 +90,8 @@ fn launch(app: AppHandle, args: Vec<OsString>, cwd: PathBuf) {
         return;
     }
 
-    for arg in args {
-        let path = match cwd.join(arg).canonicalize() {
+    for path in argv {
+        let path = match cwd.join(path).canonicalize() {
             Ok(path) => path,
             Err(e) => {
                 let message = format!("Failed to resolve path:\n{}", e);
